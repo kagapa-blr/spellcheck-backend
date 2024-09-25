@@ -1,108 +1,109 @@
-from fastapi import APIRouter, Depends
+import hashlib
+import os
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from models import MainDictionary, UserAddedWord, Suggestion  # Import the database models
-from database import get_db  # Import the database session dependency
-from pydantic import BaseModel  # Import BaseModel for request/response models
-from typing import List, Optional
 
-router = APIRouter()  # Create an instance of the API router
+from database import get_db
+from models import MainDictionary
+
+router = APIRouter()
 
 
-# Request model for adding a word
+# Request model for adding, updating, and deleting a word
 class WordRequest(BaseModel):
     word: str
 
 
-# Response model for checking a word
-class CheckWordResponse(BaseModel):
-    status: bool
+# Response model for adding, updating, and deleting a word
+class AddWordResponse(BaseModel):
     message: str
 
 
 # API to check if a word exists in the main dictionary
-@router.post("/check-word/", response_model=CheckWordResponse)
+@router.post("/check-word/", response_model=AddWordResponse)
 def check_word(request: WordRequest, db: Session = Depends(get_db)):
-    """
-    Check if the given word exists in the main dictionary.
-
-    Args:
-        request (WordRequest): The request body containing the word to check.
-        db (Session): The database session.
-
-    Returns:
-        CheckWordResponse: A response indicating whether the word was found.
-    """
-    # Query the MainDictionary for the specified word
     word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
-
-    # Return response based on the query result
     if word_entry:
-        return CheckWordResponse(status=True, message="Word found in dictionary")
-    return CheckWordResponse(status=False, message="Word not found")
+        return AddWordResponse(message="Word found in dictionary")
+    return AddWordResponse(message="Word not found")
 
 
-# Response model for suggestions
-class SuggestionResponse(BaseModel):
-    word: str
-    frequency: int
-
-
-# API to get suggestions (no authentication required)
-@router.get("/suggestions/", response_model=List[SuggestionResponse])
-def get_suggestions(db: Session = Depends(get_db)):
-    """
-    Get a list of suggestions from the database.
-
-    Args:
-        db (Session): The database session.
-
-    Returns:
-        List[SuggestionResponse]: A list of suggestion objects.
-    """
-    # Query all suggestions from the Suggestion table
-    suggestions = db.query(Suggestion).all()
-    return [{"word": suggestion.word, "frequency": suggestion.frequency} for suggestion in suggestions]
-
-
-# API for users to add a word (authentication required)
-@router.post("/add-word/")
+# API for users to add a word
+@router.post("/add-word/", response_model=AddWordResponse)
 def add_word(request: WordRequest, db: Session = Depends(get_db)):
-    """
-    Add a new word to the main dictionary or increment the frequency of an existing user-added word.
-
-    Args:
-        request (WordRequest): The request body containing the word to be added.
-        db (Session): The database session.
-
-    Returns:
-        dict: A message indicating the outcome of the operation.
-    """
     word = request.word
-
-    # Query the MainDictionary to check if the word already exists
     word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
-
     if word_entry:
-        # If the word exists, check if it's been added by the user
-        user_word = db.query(UserAddedWord).filter(UserAddedWord.word == word).first()
+        return AddWordResponse(message="Word already exists in the dictionary")
 
-        if user_word:
-            # Increment the frequency count if the word was already added by the user
-            user_word.frequency += 1
-            message = "Word frequency updated"
-        else:
-            # If the word hasn't been added by the user, create a new UserAddedWord entry
-            user_word = UserAddedWord(word=word, added_by=None, frequency=1)
-            db.add(user_word)  # Add the new user word entry to the session
-            message = "New user word added"
+    new_word = MainDictionary(
+        word=word,
+        wordUniqueId=generate_word_id(word),
+        frequency=1
+    )
+    db.add(new_word)
+    db.commit()
+    return AddWordResponse(message="Word added to dictionary")
 
-        db.commit()  # Commit the changes to the database
-    else:
-        # If the word doesn't exist, create a new entry in the MainDictionary
-        new_word = MainDictionary(word=word,
-                                  wordUniqueId="your_generated_hash")  # Generate a unique ID for the new word
-        db.add(new_word)  # Add the new word to the session
-        db.commit()  # Commit the changes to the database
-        message = "Word added to dictionary"
 
-    return {"message": message}
+# API to update a word
+@router.put("/update-word/", response_model=AddWordResponse)
+def update_word(request: WordRequest, db: Session = Depends(get_db)):
+    word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
+    if not word_entry:
+        raise HTTPException(status_code=404, detail="Word not found in the dictionary")
+
+    # Assuming you want to update frequency or other attributes; adjust accordingly
+    word_entry.frequency += 1  # Increment the frequency for demonstration
+    db.commit()
+    return AddWordResponse(message="Word updated successfully")
+
+
+# API to delete a word
+@router.delete("/delete-word/", response_model=AddWordResponse)
+def delete_word(request: WordRequest, db: Session = Depends(get_db)):
+    word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
+    if not word_entry:
+        raise HTTPException(status_code=404, detail="Word not found in the dictionary")
+
+    db.delete(word_entry)
+    db.commit()
+    return AddWordResponse(message="Word deleted successfully")
+
+
+# API to update the dictionary from a text file
+@router.get("/update-dictionary/", response_model=AddWordResponse)
+def update_dictionary(db: Session = Depends(get_db)):
+    file_path = "testwords.txt"
+
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="collections.txt file not found")
+
+    added_words = []
+    with open(file_path, "r") as file:
+        words = file.readlines()
+
+    for word in words:
+        word = word.strip()
+        if not word:
+            continue
+
+        word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
+        if not word_entry:
+            new_word = MainDictionary(
+                word=word,
+                wordUniqueId=generate_word_id(word),
+                frequency=1
+            )
+            db.add(new_word)
+            added_words.append(word)
+
+    db.commit()
+    return AddWordResponse(message=f"Added {len(added_words)} new words to the dictionary.")
+
+
+def generate_word_id(word: str) -> str:
+    """Generate a unique ID for the word using hash."""
+    return hashlib.sha256(word.encode()).hexdigest()[:10]
