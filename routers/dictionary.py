@@ -73,35 +73,55 @@ def delete_word(request: WordRequest, db: Session = Depends(get_db)):
     return AddWordResponse(message="Word deleted successfully")
 
 
-# API to update the dictionary from a text file
+from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
+
+
 @router.get("/update-dictionary/", response_model=AddWordResponse)
 def update_dictionary(db: Session = Depends(get_db)):
-    file_path = "testwords.txt"
+    """Update the main dictionary by adding words from a text file."""
+    file_path = "testwords.txt"  # Path to the text file
 
+    # Check if the file exists
     if not os.path.isfile(file_path):
-        raise HTTPException(status_code=404, detail="collections.txt file not found")
+        raise HTTPException(status_code=404, detail="testwords.txt file not found")
 
     added_words = []
+    errors = []  # To keep track of words that caused errors
     with open(file_path, "r") as file:
-        words = file.readlines()
+        words = file.readlines()  # Read all lines (words) from the file
 
     for word in words:
-        word = word.strip()
-        if not word:
+        word = word.strip()  # Remove whitespace and newlines
+        if not word:  # Skip empty lines
             continue
 
-        word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
-        if not word_entry:
-            new_word = MainDictionary(
-                word=word,
-                wordUniqueId=generate_word_id(word),
-                frequency=1
-            )
-            db.add(new_word)
-            added_words.append(word)
+        # Prepare the new word entry
+        new_word = MainDictionary(
+            word=word,
+            added_by_username=None,  # Set this as needed, or remove if not required
+            wordUniqueId=generate_word_id(word),  # Generate a unique ID for the new word
+            frequency=1  # Set default frequency to 1
+        )
 
-    db.commit()
-    return AddWordResponse(message=f"Added {len(added_words)} new words to the dictionary.")
+        try:
+            db.add(new_word)  # Add the new word to the session
+            db.commit()  # Commit the changes
+            added_words.append(word)  # Keep track of successfully added words
+        except IntegrityError as ie:
+            # Handle IntegrityError (e.g., duplicate entry)
+            errors.append(f"Duplicate entry for word '{word}': {str(ie)}")
+            db.rollback()  # Rollback the current transaction to reset the session
+        except Exception as e:
+            # Handle other potential exceptions
+            errors.append(f"Error adding word '{word}': {str(e)}")
+            db.rollback()  # Rollback on other exceptions as well
+
+    # Prepare a response message
+    response_message = f"Added {len(added_words)} new words to the dictionary."
+    if errors:
+        response_message += f" Skipped {len(errors)} words due to errors."
+
+    return AddWordResponse(message=response_message)
 
 
 def generate_word_id(word: str) -> str:
