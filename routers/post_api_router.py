@@ -149,27 +149,33 @@ def add_suggestion(suggestion: SuggestionCreate, db: Session = Depends(get_db)):
 
 
 
+
 @router.get("/user-added-words/refresh/")
-def refresh_words(user_id: int, db: Session = Depends(get_db)):
+def refresh_words(username: str, db: Session = Depends(get_db)):
     """
-    Refresh words from the collections.txt file and add them to the UserAddedWord table.
+    Refresh words from the collection.txt file and add them to the UserAddedWord table.
 
     Args:
-        user_id (int): The ID of the user adding the words.
+        username (str): The username of the user adding the words.
         db (Session): SQLAlchemy session.
 
     Returns:
         dict: A message indicating the result of the operation.
     """
-    if user_id is None:
-        raise HTTPException(status_code=400, detail="User ID must be provided")
+    if username is None:
+        raise HTTPException(status_code=400, detail="Username must be provided")
 
-    # Path to the collections.txt file in the working directory
+    # Check if the user exists
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Path to the collection.txt file in the working directory
     file_path = os.path.join(os.getcwd(), "collection.txt")
 
     # Check if the file exists
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="collections.txt file not found")
+        raise HTTPException(status_code=404, detail="collection.txt file not found")
 
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
@@ -179,19 +185,18 @@ def refresh_words(user_id: int, db: Session = Depends(get_db)):
         for word in words:
             word = word.strip()  # Remove any leading/trailing whitespace
             if word:  # Ensure the word is not empty
-                new_user_word = UserAddedWord(word=word, added_by=user_id)
+                new_user_word = UserAddedWord(word=word, added_by_username=username)  # Use username
                 db.add(new_user_word)  # Add the new user-added word to the session
 
         db.commit()  # Commit the transaction
         return {"message": "User-added words refreshed successfully"}
 
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()  # Rollback if there's an integrity error
-        raise HTTPException(status_code=400, detail="Error refreshing words. Please try again.")
+        raise HTTPException(status_code=400, detail=f"Integrity error: {str(e.orig)}")
     except Exception as e:
         db.rollback()  # Rollback for any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
-
 
 
 # API to check if a word exists in the UserAddedWord table
@@ -202,21 +207,19 @@ def check_user_word(word: str, db: Session = Depends(get_db)):
 
     Args:
         word (str): The word to check.
-        db (AsyncSession): SQLAlchemy session.
+        db (Session): SQLAlchemy session.
 
     Returns:
         dict: A message indicating whether the word exists.
     """
     try:
         # Query the UserAddedWord table for the specified word
-        existing_word = db.execute(select(UserAddedWord).filter(UserAddedWord.word == word))
-        word_exists = existing_word.scalars().first() is not None  # Check if the word exists
+        existing_word = db.execute(select(UserAddedWord).filter(UserAddedWord.word == word)).scalars().first()
 
-        if word_exists:
+        if existing_word:
             return {"message": "Word exists in the UserAddedWord table"}
         else:
             return {"message": "Word does not exist in the UserAddedWord table"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))  # Return a 500 Internal Server Error
-
+        raise HTTPException(status_code=500, detail=str(e))  # Return a 500 Internal Serve

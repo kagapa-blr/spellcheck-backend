@@ -50,6 +50,22 @@ def get_user_added_words(db: Session = Depends(get_db)):
     user_added_words = db.query(UserAddedWord).all()  # Query all user-added words
     return user_added_words
 
+# API to get up to 100 user-added words
+@router.get("/user-added-words/limit/")
+def get_limited_user_added_words(limit: int = 100, db: Session = Depends(get_db)):
+    """
+    Retrieve a limited number of user-added words from the database.
+
+    Args:
+        limit (int): The maximum number of words to retrieve. Default is 100.
+        db (Session): The database session.
+
+    Returns:
+        list: A list of user-added words up to the specified limit.
+    """
+    user_added_words = db.query(UserAddedWord).limit(limit).all()  # Query user-added words with a limit
+    return user_added_words
+
 # API to get all suggestions
 @router.get("/suggestions/")
 def get_suggestions(db: Session = Depends(get_db)):
