@@ -26,7 +26,7 @@ class WordCreate(BaseModel):
 
 class UserAddedWordCreate(BaseModel):
     word: str
-    added_by: int = None  # Optional field for user ID
+    added_by: str  # Change to string for username
 
 
 class SuggestionCreate(BaseModel):
@@ -95,10 +95,11 @@ def add_word_to_dictionary(word: WordCreate, db: Session = Depends(get_db)):
 
 
 # API to add a new user-added word
+
 @router.post("/user-added-words/")
 def add_user_added_word(user_word: UserAddedWordCreate, db: Session = Depends(get_db)):
     """
-    Add a new user-added word to the database.
+    Add a new user-added word to the database or increment its frequency if it already exists.
 
     Args:
         user_word (UserAddedWordCreate): The user-added word data.
@@ -107,10 +108,20 @@ def add_user_added_word(user_word: UserAddedWordCreate, db: Session = Depends(ge
         dict: A message indicating the result of the operation.
     """
     try:
-        new_user_word = UserAddedWord(**user_word.dict())  # Create a new user-added word instance
-        db.add(new_user_word)  # Add the new user-added word to the session
-        db.commit()  # Commit the transaction
-        return {"message": "User-added word added successfully"}
+        # Check if the word already exists in the database
+        existing_word = db.query(UserAddedWord).filter(UserAddedWord.word == user_word.word).first()
+
+        if existing_word:
+            # If it exists, increment the frequency
+            existing_word.frequency += 1  # Increment frequency by 1
+            db.commit()  # Commit the transaction
+            return {"message": f"User-added word frequency incremented successfully."}
+        else:
+            # If it does not exist, create a new user-added word instance
+            new_user_word = UserAddedWord(**user_word.dict(), frequency=1)  # Initialize frequency to 1
+            db.add(new_user_word)  # Add the new user-added word to the session
+            db.commit()  # Commit the transaction
+            return {"message": "User-added word added successfully with frequency 1."}
 
     except IntegrityError:
         db.rollback()  # Rollback if there's an integrity error
@@ -118,7 +129,6 @@ def add_user_added_word(user_word: UserAddedWordCreate, db: Session = Depends(ge
     except Exception as e:
         db.rollback()  # Rollback for any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # API to add a new suggestion
 @router.post("/suggestions/")

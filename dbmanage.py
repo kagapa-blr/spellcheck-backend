@@ -2,26 +2,58 @@ import os
 import subprocess
 import sys
 
-import alembic.command
-import alembic.config
 from dotenv import load_dotenv
 
-from database import Base, engine, create_database_if_not_exists
+import alembic
+from alembic import config
+from database import Base, create_database_if_not_exists
 
 # Load environment variables from .env file
 load_dotenv()
 
 ALEMBIC_DIR = 'alembic'  # Assuming the default Alembic folder is named 'alembic'
 
-
+DB_USERNAME = os.getenv("DB_USERNAME")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_PORT = os.getenv("DB_PORT", "3306")  # Default to 3306 if not set
 # Function to reset the database
-def reset_database():
-    # Recreate database by dropping all tables and creating them again
-    Base.metadata.drop_all(bind=engine)  # Drop all tables
-    print("All tables dropped.")
+from sqlalchemy import create_engine, text
 
-    Base.metadata.create_all(bind=engine)  # Create all tables
-    print("All tables created successfully.")
+def reset_database():
+    try:
+        # Drop the existing database if it exists
+        engine = create_engine(f"mysql+pymysql://{DB_USERNAME}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+        with engine.connect() as connection:
+            connection.execute(text(f"DROP DATABASE IF EXISTS {DB_NAME};"))  # Drop the database
+            print(f"Database '{DB_NAME}' dropped successfully.")
+
+        # Create the database again
+        with engine.connect() as connection:
+            connection.execute(text(f"CREATE DATABASE {DB_NAME};"))  # Create the database
+            print(f"Database '{DB_NAME}' created successfully.")
+
+        # Create all tables
+        Base.metadata.create_all(bind=engine)
+        print("All tables created successfully.")
+    except Exception as e:
+        print(f"Error in reset_database: {e}")
+
+# Function to drop the existing database
+def drop_database():
+    try:
+        database_url = 'mysql+pymysql://root:@127.0.0.1:3306/spellcheck'
+        if not database_url:
+            raise ValueError("DATABASE_URL environment variable is not set.")
+
+        drop_engine = create_engine(database_url)
+
+        with drop_engine.connect() as connection:
+            connection.execute("DROP DATABASE IF EXISTS spellcheck")  # Replace 'spellcheck' with your database name
+            print("Database 'spellcheck' dropped successfully.")
+    except Exception as e:
+        print(f"Error dropping database: {e}")
 
 
 # Function to initialize Alembic if not already initialized
@@ -34,16 +66,28 @@ def initialize_alembic():
         print("Alembic already initialized.")
 
 
-# Function to run Alembic migrations
+
 def migrate_database():
     initialize_alembic()
+    # Create a new Alembic revision with a descriptive message
+    revision_message = "create account table"
+    result = subprocess.run(["alembic", "revision", "-m", revision_message], capture_output=True, text=True)
+    # Check if the revision command was successful
+    if result.returncode != 0:
+        print(f"Error creating Alembic revision: {result.stderr}")
+        return
+    print("Alembic revision created successfully.")
 
-    # Alembic configuration file path
-    alembic_cfg = alembic.config.Config("alembic.ini")
+    # Run the database migration (upgrade to the latest version)
+    print("Starting database migration...")
+    result = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
 
-    # Run the migration
-    alembic.command.upgrade(alembic_cfg, "head")
-    print("Database migration completed successfully.")
+    # Check if the upgrade command was successful
+    if result.returncode != 0:
+        print(f"Error during migration: {result.stderr}")
+        return
+
+    print(f"Database migration completed successfully:\n{result.stdout}")
 
 
 def main():
