@@ -1,4 +1,7 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError  # Import for handling integrity errors
 from models import User, MainDictionary, UserAddedWord, Suggestion  # Import the database models
@@ -141,3 +144,79 @@ def add_suggestion(suggestion: SuggestionCreate, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()  # Rollback for any other exceptions
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+
+@router.get("/user-added-words/refresh/")
+def refresh_words(user_id: int, db: Session = Depends(get_db)):
+    """
+    Refresh words from the collections.txt file and add them to the UserAddedWord table.
+
+    Args:
+        user_id (int): The ID of the user adding the words.
+        db (Session): SQLAlchemy session.
+
+    Returns:
+        dict: A message indicating the result of the operation.
+    """
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="User ID must be provided")
+
+    # Path to the collections.txt file in the working directory
+    file_path = os.path.join(os.getcwd(), "collection.txt")
+
+    # Check if the file exists
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="collections.txt file not found")
+
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            words = file.readlines()  # Read all lines from the file
+
+        # Prepare to insert words into the database
+        for word in words:
+            word = word.strip()  # Remove any leading/trailing whitespace
+            if word:  # Ensure the word is not empty
+                new_user_word = UserAddedWord(word=word, added_by=user_id)
+                db.add(new_user_word)  # Add the new user-added word to the session
+
+        db.commit()  # Commit the transaction
+        return {"message": "User-added words refreshed successfully"}
+
+    except IntegrityError:
+        db.rollback()  # Rollback if there's an integrity error
+        raise HTTPException(status_code=400, detail="Error refreshing words. Please try again.")
+    except Exception as e:
+        db.rollback()  # Rollback for any other exceptions
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# API to check if a word exists in the UserAddedWord table
+@router.get("/user-added-words/check/")
+def check_user_word(word: str, db: Session = Depends(get_db)):
+    """
+    Check if a word exists in the UserAddedWord table.
+
+    Args:
+        word (str): The word to check.
+        db (AsyncSession): SQLAlchemy session.
+
+    Returns:
+        dict: A message indicating whether the word exists.
+    """
+    try:
+        # Query the UserAddedWord table for the specified word
+        existing_word = db.execute(select(UserAddedWord).filter(UserAddedWord.word == word))
+        word_exists = existing_word.scalars().first() is not None  # Check if the word exists
+
+        if word_exists:
+            return {"message": "Word exists in the UserAddedWord table"}
+        else:
+            return {"message": "Word does not exist in the UserAddedWord table"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))  # Return a 500 Internal Server Error
+
