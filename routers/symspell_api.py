@@ -41,7 +41,7 @@ def get_suggestions(request: SuggestionRequest):
     logger.info(f"Received request for suggestions for word: {request.word}")
 
     # Look up suggestions using SymSpell
-    suggestions = sym_spell.lookup(request.word, Verbosity.ALL, include_unknown=True)
+    suggestions = sym_spell.lookup(request.word, Verbosity.ALL, include_unknown=False)
 
     # Log the suggestions found
     if suggestions:

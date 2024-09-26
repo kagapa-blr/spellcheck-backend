@@ -59,12 +59,12 @@ async def check_word_in_bloom(request: WordCheckRequest):
     if word in loaded_bloom:
         return {
             "message": f"The word '{word}' is present in the Main Dictionary.",
-            "status": "true"
+            "status": True
         }
     else:
         return {
             "message": f"The word '{word}' is definitely not in the dictionary.",
-            "status": "false"
+            "status": False
         }
 
 
@@ -83,3 +83,17 @@ async def get_bloom_stats():
         error_rate=loaded_bloom.get_error_rate(),
         is_empty=loaded_bloom.is_empty()
     )
+
+
+def filter_missing_words(words: list[str]) -> list[str]:
+    """
+    Takes a list of words and returns the words that are not in the Bloom filter.
+
+    Args:
+        words (list[str]): The list of words to check.
+
+    Returns:
+        list[str]: A list of words that are not present in the Bloom filter.
+    """
+    missing_words = [word for word in words if word not in loaded_bloom]
+    return missing_words
