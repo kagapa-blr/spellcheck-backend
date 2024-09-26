@@ -1,10 +1,10 @@
 import os
 import subprocess
 import sys
+
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-from database import Base  # Adjust the import according to your project structure
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,34 +22,27 @@ DATABASE_URL_WITHOUT_DB = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST
 # Target MySQL database URL
 SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+
 def reset_database():
     """Reset the database by dropping and recreating it, then creating all tables."""
     try:
         # Connect to the MySQL server without specifying a database
         engine = create_engine(DATABASE_URL_WITHOUT_DB)
-
         # Drop the existing database if it exists
         with engine.connect() as connection:
             connection.execute(text(f"DROP DATABASE IF EXISTS {DB_NAME};"))  # Drop the database
             print(f"Database '{DB_NAME}' dropped successfully.")
-
         # Create the database again
         with engine.connect() as connection:
-            connection.execute(text(f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))  # Create the database
+            connection.execute(text(
+                f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))  # Create the database
             print(f"Database '{DB_NAME}' created successfully.")
-
-        # Create the main engine for the actual database connection
-        engine = create_engine(SQLALCHEMY_DATABASE_URL)
-
-        # Create all tables
-        Base.metadata.create_all(bind=engine)
-        print("All tables created successfully.")
-        print("Created tables:", Base.metadata.tables.keys())  # Show created tables
 
     except SQLAlchemyError as e:
         print(f"SQLAlchemyError in reset_database: {e}")
     except Exception as e:
         print(f"Error in reset_database: {e}")
+
 
 def drop_database():
     """Drop the existing database."""
@@ -62,6 +55,7 @@ def drop_database():
     except Exception as e:
         print(f"Error dropping database: {e}")
 
+
 def initialize_alembic():
     """Initialize Alembic if it is not already initialized."""
     if not os.path.exists(ALEMBIC_DIR):
@@ -70,6 +64,7 @@ def initialize_alembic():
         print("Alembic initialized successfully.")
     else:
         print("Alembic already initialized.")
+
 
 def migrate_database():
     """Create a new Alembic revision and run the database migration."""
@@ -95,6 +90,7 @@ def migrate_database():
 
     print(f"Database migration completed successfully:\n{result.stdout}")
 
+
 def main():
     """Main function to run database management tasks."""
     print("Please select an option:")
@@ -112,6 +108,7 @@ def main():
     else:
         print("Invalid option selected. Exiting.")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

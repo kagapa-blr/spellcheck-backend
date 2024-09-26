@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr  # For validation
-from auth import create_access_token, get_password_hash, verify_password
-from models import User
-from database import get_db
 from datetime import timedelta
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, EmailStr  # For validation
+from sqlalchemy.orm import Session
+
+from auth import create_access_token, get_password_hash, verify_password
+from database import get_db
+from models import User
 
 router = APIRouter()
 
@@ -15,6 +18,11 @@ class UserSignupRequest(BaseModel):
     email: EmailStr
     phone: str
     password: str
+
+
+# Response model for getting usernames
+class UserListResponse(BaseModel):
+    usernames: List[str]
 
 
 class UserLoginRequest(BaseModel):
@@ -29,6 +37,12 @@ class UserSignupResponse(BaseModel):
 class UserLoginResponse(BaseModel):
     access_token: str
     token_type: str
+
+
+# Response model for checking user existence
+class UserExistenceResponse(BaseModel):
+    username: str
+    exists: bool
 
 
 @router.post("/signup", response_model=UserSignupResponse)
@@ -62,3 +76,20 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return UserLoginResponse(access_token=access_token, token_type="bearer")
+
+
+@router.get("/users", response_model=UserListResponse)
+def get_all_usernames(db: Session = Depends(get_db)):
+    """Get a list of all usernames."""
+    users = db.query(User.username).all()  # Fetch all usernames from the User table
+    usernames = [user[0] for user in users]  # Extract usernames from the results
+    return UserListResponse(usernames=usernames)
+
+
+@router.get("/check-user/{username}", response_model=UserExistenceResponse)
+def check_user_exists(username: str, db: Session = Depends(get_db)):
+    """Check if a user exists in the database by username."""
+    user = db.query(User).filter(User.username == username).first()  # Query for the user
+
+    # Return response indicating whether the user exists
+    return UserExistenceResponse(username=username, exists=user is not None)

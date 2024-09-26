@@ -1,8 +1,10 @@
 import os
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -11,9 +13,8 @@ from models import MainDictionary
 router = APIRouter()
 
 
-# Request model for adding, updating, and deleting a word
 class WordRequest(BaseModel):
-    word: str
+    words: List[str]  # A list of words to add
 
 
 # Response model for adding, updating, and deleting a word
@@ -24,38 +25,49 @@ class AddWordResponse(BaseModel):
 # API to check if a word exists in the main dictionary
 @router.post("/check-word/", response_model=AddWordResponse)
 def check_word(request: WordRequest, db: Session = Depends(get_db)):
-    word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
-    if word_entry:
-        return AddWordResponse(message="Word found in dictionary")
-    return AddWordResponse(message="Word not found")
+    word_entries = db.query(MainDictionary).filter(MainDictionary.word.in_(request.words)).all()
+    existing_words = [entry.word for entry in word_entries]
+    if existing_words:
+        return AddWordResponse(message=f"Words found in dictionary: {', '.join(existing_words)}")
+    return AddWordResponse(message="No words found")
 
 
-# API for users to add a word
-@router.post("/add-word/", response_model=AddWordResponse)
-def add_word(request: WordRequest, db: Session = Depends(get_db)):
-    word = request.word
-    word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
-    if word_entry:
-        return AddWordResponse(message="Word already exists in the dictionary")
-    wordUniqueId = get_last_serial_number(db=db)
-    new_word = MainDictionary(
-        word=word,
-        wordUniqueId=wordUniqueId,
-        frequency=1
-    )
-    db.add(new_word)
-    db.commit()
-    return AddWordResponse(message="Word added to dictionary")
+# API for users to add words
+@router.post("/add-words/", response_model=AddWordResponse)
+def add_words(request: WordRequest, db: Session = Depends(get_db)):
+    """Add multiple words to the dictionary."""
+    existing_words = db.query(MainDictionary.word).filter(MainDictionary.word.in_(request.words)).all()
+    existing_word_set = {word[0] for word in existing_words}  # Set for quick lookup
+
+    # Check which words are already in the dictionary
+    new_words = [word for word in request.words if word not in existing_word_set]
+
+    if not new_words:
+        return AddWordResponse(message="All words already exist in the dictionary.")
+
+    for word in new_words:
+        new_word = MainDictionary(
+            word=word,
+            frequency=1  # No unique ID needed
+        )
+        db.add(new_word)
+
+    db.commit()  # Commit all new words at once
+
+    return AddWordResponse(message=f"Added {len(new_words)} words to the dictionary.")
 
 
 # API to update a word
 @router.put("/update-word/", response_model=AddWordResponse)
 def update_word(request: WordRequest, db: Session = Depends(get_db)):
-    word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
+    if len(request.words) != 1:
+        raise HTTPException(status_code=400, detail="Update requires exactly one word.")
+
+    word = request.words[0]
+    word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
     if not word_entry:
         raise HTTPException(status_code=404, detail="Word not found in the dictionary")
 
-    # Assuming you want to update frequency or other attributes; adjust accordingly
     word_entry.frequency += 1  # Increment the frequency for demonstration
     db.commit()
     return AddWordResponse(message="Word updated successfully")
@@ -64,16 +76,17 @@ def update_word(request: WordRequest, db: Session = Depends(get_db)):
 # API to delete a word
 @router.delete("/delete-word/", response_model=AddWordResponse)
 def delete_word(request: WordRequest, db: Session = Depends(get_db)):
-    word_entry = db.query(MainDictionary).filter(MainDictionary.word == request.word).first()
+    if len(request.words) != 1:
+        raise HTTPException(status_code=400, detail="Deletion requires exactly one word.")
+
+    word = request.words[0]
+    word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
     if not word_entry:
         raise HTTPException(status_code=404, detail="Word not found in the dictionary")
 
     db.delete(word_entry)
     db.commit()
     return AddWordResponse(message="Word deleted successfully")
-
-
-from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
 
 
 # Function to get the last word serial number from the database
@@ -84,19 +97,17 @@ def get_last_serial_number(db: Session) -> int:
 
 
 # Function to process words in batches of 1000
-def process_words_in_batches(words, db: Session, starting_serial, batch_size=1000):
+def process_words_in_batches(words, db: Session, batch_size=3000):
     added_words = []
     errors = []
     batch = []
-    current_serial = starting_serial
 
     for word in words:
         word = word.strip()
         if not word:
             continue
 
-        batch.append((word, current_serial))  # Store word with serial number
-        current_serial += 1  # Increment serial for the next word
+        batch.append(word)  # Store word
 
         if len(batch) == batch_size:
             added, failed = add_words_to_db(batch, db)
@@ -114,16 +125,14 @@ def process_words_in_batches(words, db: Session, starting_serial, batch_size=100
 
 
 # Function to add words to the database
-def add_words_to_db(word_data, db: Session):
+def add_words_to_db(words, db: Session):
     added_words = []
     errors = []
 
-    for word, serial in word_data:
+    for word in words:
         new_word = MainDictionary(
             word=word,
-            added_by_username=None,  # Set as needed
-            wordUniqueId=serial,  # Use the serial number
-            frequency=1
+            frequency=1  # No unique ID needed
         )
 
         try:
@@ -151,13 +160,10 @@ def update_dictionary(db: Session = Depends(get_db)):
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="collection.txt file not found")
 
-    # Get the highest serial number from the database
-    next_serial = get_last_serial_number(db)
-
     with open(file_path, "r") as file:
         words = file.readlines()  # Read all words from the file
 
-    added_words, errors = process_words_in_batches(words, db, next_serial, batch_size=1000)
+    added_words, errors = process_words_in_batches(words, db, batch_size=1000)
 
     response_message = f"Added {len(added_words)} new words to the dictionary."
     if errors:
