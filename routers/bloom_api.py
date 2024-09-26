@@ -9,27 +9,37 @@ from database import get_db
 
 router = APIRouter()
 
-# Initialize the Bloom filter with a specified capacity and error rate
-bloom_filter = BloomWordFilter(capacity=10000, error_rate=0.1)
-
 
 # Request model for checking a word
 class WordCheckRequest(BaseModel):
     word: str
 
 
+# Global variable to hold the initialized Bloom filter
+loaded_bloom: BloomWordFilter = None
+
+
 async def bloom_initialization():
     """Initialize the Bloom filter by loading words from the database."""
     db: Session = next(get_db())
-    bloom_filter.load_words(db)
-    print("Bloom filter loaded with words from MainDictionary.")
+    """Initialize the Bloom filter by loading words from the database."""
+    global loaded_bloom
+    if loaded_bloom is None:  # Initialize only if not already initialized
+        loaded_bloom = BloomWordFilter(db, error_rate=0.001)
+        loaded_bloom = loaded_bloom.load_words(db)  # Load words into the Bloom filter
+        print("Bloom filter initialized successfully.")
 
 
 @router.post("/check_word/")
 async def check_word_in_bloom(request: WordCheckRequest):
     """Check if a word exists in the Bloom filter."""
+    if loaded_bloom == None:
+        return {
+            "message": "Bloom filter is not initialized. Please wait for the application to start.",
+            "status": "not_initialized"
+        }
     word = request.word
-    if word in bloom_filter:
+    if word in loaded_bloom:
         return {
             "message": f"The word '{word}' is present in the Main Dictionary.",
             "status": "true"
