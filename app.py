@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from database import Base, engine
-from routers import user, dictionary, get_api_router, post_api_router, bloom_api, symspell_api
+from routers import user, dictionary, get_api_router, post_api_router, bloom_api, symspell_api, user_added_words_api
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
 from symspell.sym_spell import symspell_initialization
 
@@ -26,6 +26,7 @@ app.include_router(get_api_router.router, tags=['GET API'])
 app.include_router(post_api_router.router, tags=['POST API'])
 app.include_router(bloom_api.router, prefix="/bloom/api/v1", tags=['BLOOM API'])
 app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpell API'])
+app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=['User Added'])
 
 
 @app.get("/")
