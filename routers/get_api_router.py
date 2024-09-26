@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from models import User, MainDictionary, UserAddedWord, Suggestion  # Import the database models
+
 from database import get_db  # Import the database session dependency
+from models import User, MainDictionary, UserAddedWord, Suggestion  # Import the database models
 
 router = APIRouter()  # Create an instance of the API router
+
 
 # API to get all users
 @router.get("/users/")
@@ -20,6 +22,7 @@ def get_users(db: Session = Depends(get_db)):
     users = db.query(User).all()  # Query all users
     return users
 
+
 # API to get all words in the main dictionary
 @router.get("/main-dictionary/")
 def get_main_dictionary(db: Session = Depends(get_db)):
@@ -35,6 +38,7 @@ def get_main_dictionary(db: Session = Depends(get_db)):
     words = db.query(MainDictionary).all()  # Query all words in the main dictionary
     return words
 
+
 # API to get all user-added words
 @router.get("/user-added-words/")
 def get_user_added_words(db: Session = Depends(get_db)):
@@ -49,6 +53,7 @@ def get_user_added_words(db: Session = Depends(get_db)):
     """
     user_added_words = db.query(UserAddedWord).all()  # Query all user-added words
     return user_added_words
+
 
 # API to get up to 100 user-added words
 @router.get("/user-added-words/limit/")
@@ -66,6 +71,7 @@ def get_limited_user_added_words(limit: int = 100, db: Session = Depends(get_db)
     user_added_words = db.query(UserAddedWord).limit(limit).all()  # Query user-added words with a limit
     return user_added_words
 
+
 # API to get all suggestions
 @router.get("/suggestions/")
 def get_suggestions(db: Session = Depends(get_db)):
@@ -76,7 +82,7 @@ def get_suggestions(db: Session = Depends(get_db)):
         db (Session): The database session.
 
     Returns:
-        list: A list of suggestion objects.
+        list: A list of symspell objects.
     """
     suggestions = db.query(Suggestion).all()  # Query all suggestions
     return suggestions

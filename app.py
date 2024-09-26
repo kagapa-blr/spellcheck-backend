@@ -4,8 +4,8 @@ from fastapi import FastAPI
 
 from database import Base, engine
 from routers import user, dictionary, get_api_router, post_api_router, bloom_api, symspell_api
-from routers.bloom_api import bloom_initialization
-from suggestion.sym_spell import symspell_initialization
+from routers.bloom_api import bloom_initialization, bloom_reinitialization
+from symspell.sym_spell import symspell_initialization
 
 
 @asynccontextmanager
@@ -31,6 +31,13 @@ app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpe
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the API"}
+
+
+@app.get("/admin/reload")
+async def reload_bloom_symspell():
+    await bloom_reinitialization()
+    # Load the dictionary into SymSpell on startup
+    symspell_initialization()
 
 
 if __name__ == "__main__":

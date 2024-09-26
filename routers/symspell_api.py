@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from symspellpy import Verbosity
 
-from suggestion.sym_spell import sym_spell
+from symspell.sym_spell import sym_spell, symspell_initialization
 
 # Create a new APIRouter for SymSpell
 router = APIRouter()
@@ -71,3 +71,10 @@ def calculate_error_rate() -> float:
     """Calculate the error rate for the SymSpell model."""
     # Implement your logic here to compute the error rate
     return 0.0  # Placeholder value; replace with actual calculation
+
+
+@router.post("/reload/")
+async def reload_symspell():
+    """Reload the SymSpell dictionary on demand."""
+    symspell_initialization()  # Call your existing initialization function
+    return {"message": "SymSpell dictionary reloaded successfully."}

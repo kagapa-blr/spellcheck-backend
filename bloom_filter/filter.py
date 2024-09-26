@@ -21,8 +21,24 @@ class BloomWordFilter:
         for word, in words:  # Unpack the tuple returned by query
             self.bloom_filter.add(word)
         print(f"Bloom filter loaded with {self.word_count} words.")
-        return self.bloom_filter
+        # return self.bloom_filter
 
     def __contains__(self, word: str) -> bool:
         """Check if a word is in the Bloom filter."""
         return word in self.bloom_filter
+
+    def get_size(self) -> int:
+        """Return the estimated number of elements in the Bloom filter."""
+        return len(self.bloom_filter)  # Calls __len__()
+
+    def is_empty(self) -> bool:
+        """Check if the Bloom filter is empty."""
+        return self.get_size() == 0
+
+    def get_capacity(self) -> int:
+        """Return the capacity of the Bloom filter."""
+        return self.bloom_filter.capacity
+
+    def get_error_rate(self) -> float:
+        """Return the error rate of the Bloom filter."""
+        return self.bloom_filter.error_rate  # This requires you to set error_rate in __init__

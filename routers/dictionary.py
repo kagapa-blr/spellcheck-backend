@@ -37,10 +37,10 @@ def add_word(request: WordRequest, db: Session = Depends(get_db)):
     word_entry = db.query(MainDictionary).filter(MainDictionary.word == word).first()
     if word_entry:
         return AddWordResponse(message="Word already exists in the dictionary")
-
+    wordUniqueId = get_last_serial_number(db=db)
     new_word = MainDictionary(
         word=word,
-        wordUniqueId=get_last_serial_number(db),
+        wordUniqueId=wordUniqueId,
         frequency=1
     )
     db.add(new_word)
@@ -78,9 +78,9 @@ from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific 
 
 # Function to get the last word serial number from the database
 def get_last_serial_number(db: Session) -> int:
-    """Get the highest wordUniqueId (serial number) from the database."""
-    last_serial = db.query(func.max(MainDictionary.wordUniqueId)).scalar()
-    return last_serial or 0  # If no entries, start from 0
+    """Get the total number of rows in the MainDictionary and return total rows + 1."""
+    total_rows = db.query(func.count(MainDictionary.id)).scalar()
+    return total_rows + 1  # Return total rows + 1
 
 
 # Function to process words in batches of 1000
@@ -152,8 +152,7 @@ def update_dictionary(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="collection.txt file not found")
 
     # Get the highest serial number from the database
-    last_serial = get_last_serial_number(db)
-    next_serial = last_serial + 1  # Start from the next serial number
+    next_serial = get_last_serial_number(db)
 
     with open(file_path, "r") as file:
         words = file.readlines()  # Read all words from the file
