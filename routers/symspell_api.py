@@ -43,13 +43,19 @@ def get_suggestions(request: SuggestionRequest):
     # Look up suggestions using SymSpell
     suggestions = sym_spell.lookup(request.word, Verbosity.ALL, include_unknown=False)
 
+    # Extract terms into a list
+    suggestion_terms = [suggestion.term for suggestion in suggestions]
+
     # Log the suggestions found
-    if suggestions:
-        logger.info(f"Suggestions found: {[suggestion.term for suggestion in suggestions]}")
+    if suggestion_terms:
+        # Check how many suggestions we have and slice accordingly
+        top_suggestions = suggestion_terms[:5]  # Get up to 5 suggestions
+        logger.info(f"Top suggestions found: {top_suggestions}")
     else:
         logger.warning("No suggestions found.")
+        top_suggestions = []  # Ensure an empty list is returned when no suggestions are found
 
-    return SuggestionsResponse(suggestions=[suggestion.term for suggestion in suggestions])
+    return SuggestionsResponse(suggestions=top_suggestions)
 
 
 # API for getting details about the SymSpell model
