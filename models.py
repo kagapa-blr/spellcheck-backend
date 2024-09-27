@@ -25,7 +25,6 @@ class UserAddedWord(Base):
     __tablename__ = "user_added_words"
     id = Column(Integer, primary_key=True, index=True)
     word = Column(String(255), nullable=False)  # Specify length for word
-    added_by_username = Column(String(100), ForeignKey("users.username"), nullable=True)  # Changed to username
     frequency = Column(Integer, default=1)
 
 

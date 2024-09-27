@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 @router.post("/suggestions/", response_model=SuggestionsResponse)
 def get_suggestions(request: SuggestionRequest):
     """Get spelling suggestions for the provided word."""
-    logger.info(f"Received request for suggestions for word: {request.word}")
+    # logger.info(f"Received request for suggestions for word: {request.word}")
 
     # Look up suggestions using SymSpell
     suggestions = sym_spell.lookup(request.word, Verbosity.ALL, include_unknown=False)
@@ -50,9 +50,9 @@ def get_suggestions(request: SuggestionRequest):
     if suggestion_terms:
         # Check how many suggestions we have and slice accordingly
         top_suggestions = suggestion_terms[:5]  # Get up to 5 suggestions
-        logger.info(f"Top suggestions found: {top_suggestions}")
+        # logger.info(f"Top suggestions found: {top_suggestions}")
     else:
-        logger.warning("No suggestions found.")
+        # logger.warning("No suggestions found.")
         top_suggestions = []  # Ensure an empty list is returned when no suggestions are found
 
     return SuggestionsResponse(suggestions=top_suggestions)

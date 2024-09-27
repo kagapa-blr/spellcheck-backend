@@ -14,13 +14,11 @@ router = APIRouter()
 class UserAddedWordResponse(BaseModel):
     id: int
     word: str
-    added_by_username: Optional[str]
     frequency: int
 
 
 class AddUserWordRequest(BaseModel):
     word: str
-    added_by_username: Optional[str] = None
     frequency: Optional[int] = 1
 
 
@@ -46,14 +44,27 @@ def get_all_user_added_words(db: Session = Depends(get_db)):
 
 @router.post("/user-added-words/", response_model=UserAddedWordResponse)
 def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_db)):
-    """Add a new word to the user_added_words table."""
+    """Add a new word to the user_added_words table or update its frequency if it exists."""
     existing_word = db.query(UserAddedWord).filter(UserAddedWord.word == request.word).first()
-    if existing_word:
-        raise HTTPException(status_code=400, detail="Word already exists.")
 
+    if existing_word:
+        # Update the frequency by 1
+        existing_word.frequency += 1
+        db.commit()  # Commit the update
+
+        # Refresh the updated object to get the latest values
+        db.refresh(existing_word)
+
+        # Construct the response using UserAddedWordResponse model
+        return UserAddedWordResponse(
+            id=existing_word.id,
+            word=existing_word.word,
+            frequency=existing_word.frequency
+        )
+
+    # If the word doesn't exist, create a new entry
     new_word = UserAddedWord(
         word=request.word,
-        added_by_username=request.added_by_username,
         frequency=request.frequency if request.frequency else 1
     )
 
@@ -66,7 +77,6 @@ def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_d
         return UserAddedWordResponse(
             id=new_word.id,
             word=new_word.word,
-            added_by_username=new_word.added_by_username,
             frequency=new_word.frequency
         )
     except IntegrityError:
