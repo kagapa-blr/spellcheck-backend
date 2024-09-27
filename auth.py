@@ -31,7 +31,8 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     if expires_delta:
         expire = datetime.now(tz=pytz.timezone('Asia/Kolkata')) + expires_delta  # Use timezone-aware UTC
     else:
-        expire = datetime.now(tz=pytz.timezone('Asia/Kolkata')) + timedelta(minutes=15)  # Use timezone-aware UTC
+        expire = datetime.now(tz=pytz.timezone('Asia/Kolkata')) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES)  # Use timezone-aware UTC
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

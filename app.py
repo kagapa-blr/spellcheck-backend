@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import File, UploadFile
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 
 from auth import admin_auth_required
@@ -61,7 +62,9 @@ async def reload_bloom_symspell():
     return {"message": "Bloom and SymSpell reinitialized successfully"}
 
 
-from fastapi import HTTPException
+@app.get('/admin/validate', dependencies=[Depends(admin_auth_required)])
+async def validate_admin():
+    return {"message": "Admin authentication successful"}
 
 
 @app.post("/upload/")
