@@ -7,10 +7,15 @@ from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 
 from auth import admin_auth_required
 from database import Base, engine
+from logger_config import setup_logger
 from routers import user, dictionary, bloom_api, symspell_api, user_added_words_api
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
 from symspell.sym_spell import symspell_initialization
 from utilities.read_file_content import filter_words_from_file
+
+# Set up logger with the module name
+logger = setup_logger(__name__)
+logger.info('Initializing')
 
 
 @asynccontextmanager
@@ -49,6 +54,7 @@ def read_root():
 
 @app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
 async def reload_bloom_symspell():
+    logger.info('bloom and sysmpell reload triggered')
     await bloom_reinitialization()
     # Load the dictionary into SymSpell on startup
     symspell_initialization()
