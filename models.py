@@ -17,7 +17,6 @@ class MainDictionary(Base):
     id = Column(Integer, primary_key=True, index=True)
     word = Column(String(255), unique=True, nullable=False)  # Specify length for word
     added_by_username = Column(String(100), ForeignKey("users.username"), nullable=True)  # Changed to username
-    # wordUniqueId = Column(String(255), unique=True)  # Specify length for unique identifier
     frequency = Column(Integer, default=1)  # Add frequency column with default value 1
 
 

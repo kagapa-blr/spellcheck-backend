@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -13,13 +13,24 @@ from models import MainDictionary
 router = APIRouter()
 
 
-class WordRequest(BaseModel):
-    words: List[str]  # A list of words to add
+# class WordRequest(BaseModel):
+#     words: List[str]
+#     added_by_username: Optional[str] = None  # Make added_by_username optional
 
 
 # Response model for adding, updating, and deleting a word
 class AddWordResponse(BaseModel):
     message: str
+
+
+class WordEntry(BaseModel):
+    word: str
+    frequency: int
+
+
+class WordRequest(BaseModel):
+    words: List[WordEntry]
+    added_by_username: Optional[str] = None  # Optional username
 
 
 # API to check if a word exists in the main dictionary
@@ -34,27 +45,36 @@ def check_word(request: WordRequest, db: Session = Depends(get_db)):
 
 # API for users to add words
 @router.post("/add-words/", response_model=AddWordResponse)
-def add_words(request: WordRequest, db: Session = Depends(get_db)):
-    """Add multiple words to the dictionary."""
-    existing_words = db.query(MainDictionary.word).filter(MainDictionary.word.in_(request.words)).all()
-    existing_word_set = {word[0] for word in existing_words}  # Set for quick lookup
+def add_words_to_dictionary(request: WordRequest, db: Session = Depends(get_db)):
+    """
+    Adds words to the main dictionary from a WordRequest object.
 
-    # Check which words are already in the dictionary
-    new_words = [word for word in request.words if word not in existing_word_set]
+    Parameters:
+    - request (WordRequest): A WordRequest object containing a list of WordEntry objects and an optional added_by_username.
+    - db (Session): A SQLAlchemy Session object for database operations.
 
-    if not new_words:
-        return AddWordResponse(message="All words already exist in the dictionary.")
+    Returns:
+    - AddWordResponse: A response object containing a message indicating the number of words added to the dictionary.
+    """
+    added_count = 0
+    for entry in request.words:
+        # Check if the word already exists
+        existing_word = db.query(MainDictionary).filter(MainDictionary.word == entry.word).first()
 
-    for word in new_words:
+        if existing_word:
+            continue  # Skip if the word already exists
+
         new_word = MainDictionary(
-            word=word,
-            frequency=1  # No unique ID needed
+            word=entry.word,
+            added_by_username=request.added_by_username if request.added_by_username else None,
+            frequency=entry.frequency if entry.frequency else 1
         )
         db.add(new_word)
+        added_count += 1
 
     db.commit()  # Commit all new words at once
 
-    return AddWordResponse(message=f"Added {len(new_words)} words to the dictionary.")
+    return AddWordResponse(message=f"Added {added_count} words to the dictionary.")
 
 
 # API to update a word

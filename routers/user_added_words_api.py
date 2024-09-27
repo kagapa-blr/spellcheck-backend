@@ -23,7 +23,7 @@ class AddUserWordRequest(BaseModel):
 
 
 class RemoveUserWordRequest(BaseModel):
-    word: str
+    words: List[str]  # Accept a list
 
 
 @router.get('/user-added-words/stats', response_model=int)
@@ -85,13 +85,27 @@ def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_d
                             detail="Failed to add word. The added_by_username must exist in the users table.")
 
 
-@router.delete("/user-added-words/", response_model=dict)
-def remove_user_added_word(request: RemoveUserWordRequest, db: Session = Depends(get_db)):
-    """Remove a word from the user_added_words table."""
-    word_entry = db.query(UserAddedWord).filter(UserAddedWord.word == request.word).first()
-    if not word_entry:
-        raise HTTPException(status_code=404, detail=f"Word '{request.word}' not found.")
+@router.delete("/user-added-words/remove/", response_model=dict)
+def remove_user_added_words(request: RemoveUserWordRequest, db: Session = Depends(get_db)):
+    """Remove a list of words from the user_added_words table."""
+    removed_words = []
+    not_found_words = []
 
-    db.delete(word_entry)
-    db.commit()
-    return {"message": f"Word '{request.word}' removed successfully."}  # Return a success message directly
+    for word in request.words:
+        word_entry = db.query(UserAddedWord).filter(UserAddedWord.word == word).first()
+        if not word_entry:
+            not_found_words.append(word)  # Collect not found words for response
+        else:
+            db.delete(word_entry)
+            removed_words.append(word)
+
+    db.commit()  # Commit once after processing all deletions
+
+    # Prepare response message
+    response_message = {
+        "message": f"Successfully removed {len(removed_words)} words.",
+        "removed": removed_words,
+        "unable_to_remove": not_found_words
+    }
+
+    return response_message  # Return a detailed response
