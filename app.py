@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
 
+from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
 
+from auth import admin_auth_required
 from database import Base, engine
 from routers import user, dictionary, bloom_api, symspell_api, user_added_words_api
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
@@ -45,7 +47,7 @@ def read_root():
     return {"message": "Welcome to the API"}
 
 
-@app.get("/admin/reload")
+@app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
 async def reload_bloom_symspell():
     await bloom_reinitialization()
     # Load the dictionary into SymSpell on startup

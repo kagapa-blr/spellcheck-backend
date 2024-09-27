@@ -1,4 +1,5 @@
 # routers/bloom_api.py
+from datetime import datetime
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -8,6 +9,8 @@ from bloom_filter.filter import BloomWordFilter
 from database import get_db
 
 router = APIRouter()
+
+last_update_timestamp = None  # Initialize to None
 
 
 # Request model for checking a word
@@ -31,10 +34,11 @@ async def bloom_initialization():
     """Initialize the Bloom filter by loading words from the database."""
     db: Session = next(get_db())
     """Initialize the Bloom filter by loading words from the database."""
-    global loaded_bloom
+    global loaded_bloom, last_update_timestamp
     if loaded_bloom is None:  # Initialize only if not already initialized
         loaded_bloom = BloomWordFilter(db, error_rate=0.001)
         loaded_bloom.load_words(db)  # Load words into the Bloom filter
+        last_update_timestamp = datetime.now()  # Set the current UTC time
         print("Bloom filter initialized successfully.")
 
 
@@ -81,7 +85,8 @@ async def get_bloom_stats():
         size=loaded_bloom.get_size(),
         capacity=loaded_bloom.get_capacity(),
         error_rate=loaded_bloom.get_error_rate(),
-        is_empty=loaded_bloom.is_empty()
+        is_empty=loaded_bloom.is_empty(),
+        last_updated=last_update_timestamp
     )
 
 

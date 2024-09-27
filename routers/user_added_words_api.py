@@ -28,6 +28,13 @@ class RemoveUserWordRequest(BaseModel):
     word: str
 
 
+@router.get('/user-added-words/stats', response_model=int)
+def get_user_added_word_stats(db: Session = Depends(get_db)):
+    """Get the total number of words in the user_added_words table."""
+    total_count = db.query(UserAddedWord).count()
+    return total_count
+
+
 @router.get("/user-added-words/", response_model=List[UserAddedWordResponse])
 def get_all_user_added_words(db: Session = Depends(get_db)):
     """Get all words from the user_added_words table."""
