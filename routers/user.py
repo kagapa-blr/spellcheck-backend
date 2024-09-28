@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr  # For validation
@@ -18,6 +18,13 @@ class UserSignupRequest(BaseModel):
     email: EmailStr
     phone: str
     password: str
+
+
+# New model for updating user details
+class UserUpdateRequest(BaseModel):
+    email: Optional[EmailStr] = None  # Optional field
+    phone: Optional[str] = None  # Optional field
+    password: Optional[str] = None  # Optional field
 
 
 # Response model for getting usernames
@@ -54,7 +61,6 @@ class UserInfoResponse(BaseModel):
 
 @router.post("/signup", response_model=UserSignupResponse)
 def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
-    # Check if the user already exists
     existing_user = db.query(User).filter(User.username == request.username).first()
     if existing_user:
         raise HTTPException(
@@ -87,7 +93,6 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/usernames", response_model=UsernameListResponse)
 def get_all_usernames(db: Session = Depends(get_db)):
-    """Get a list of all usernames."""
     users = db.query(User.username).all()  # Fetch all usernames from the User table
     usernames = [user[0] for user in users]  # Extract usernames from the results
     return UsernameListResponse(usernames=usernames)
@@ -95,15 +100,52 @@ def get_all_usernames(db: Session = Depends(get_db)):
 
 @router.get("/check-user/{username}", response_model=UserExistenceResponse)
 def check_user_exists(username: str, db: Session = Depends(get_db)):
-    """Check if a user exists in the database by username."""
-    user = db.query(User).filter(User.username == username).first()  # Query for the user
-
-    # Return response indicating whether the user exists
+    user = db.query(User).filter(User.username == username).first()
     return UserExistenceResponse(username=username, exists=user is not None)
 
 
 @router.get("/info", response_model=List[UserInfoResponse])
 def get_all_user_info(db: Session = Depends(get_db)):
-    """Get a list of all user information (without passwords)."""
     users = db.query(User).all()  # Fetch all users from the User table
     return users  # FastAPI automatically serializes it into JSON using the Pydantic model
+
+
+@router.delete("/delete-user/{username}", response_model=UserSignupResponse)
+def delete_user(username: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == username).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return UserSignupResponse(message="User deleted successfully")
+
+
+@router.put("/update-user/{username}", response_model=UserSignupResponse)
+def update_user(username: str, request: UserUpdateRequest, db: Session = Depends(get_db)):
+    """Update a user's details in the database by username."""
+    user = db.query(User).filter(User.username == username).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Update fields if provided
+    if request.email:
+        user.email = request.email
+    if request.phone:
+        user.phone = request.phone
+    if request.password:
+        user.password = get_password_hash(request.password)  # Hash the new password
+
+    db.commit()
+    db.refresh(user)
+
+    return UserSignupResponse(message="User updated successfully")
