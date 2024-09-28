@@ -1,0 +1,155 @@
+2024-09-27 11:41:55,794 - main - INFO - Logger initialized for module: main. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:41:55,794 - main - INFO - Initializing
+2024-09-27 11:41:58,149 - main - INFO - Logger initialized for module: main. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:41:58,150 - main - INFO - Initializing
+2024-09-27 11:42:30,230 - main - DEBUG - This debug message will be logged to the test file but not shown in the console.
+2024-09-27 11:42:30,230 - main - INFO - This info message will be logged to both the console and the file.
+2024-09-27 11:42:30,231 - main - WARNING - This warning message will be logged to both the console and the file.
+2024-09-27 11:42:30,231 - main - ERROR - This error message will be logged to both the console and the file.
+2024-09-27 11:42:30,231 - main - CRITICAL - This critical message will be logged to both the console and the file.
+2024-09-27 11:43:22,988 - main - INFO - Logger initialized for module: main. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:43:22,988 - main - INFO - Initializing
+2024-09-27 11:44:21,552 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:44:21,552 - app - INFO - Initializing
+2024-09-27 11:45:11,685 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:45:11,685 - app - INFO - Initializing
+2024-09-27 11:45:34,139 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 11:50:32,633 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:50:32,633 - app - INFO - Initializing
+2024-09-27 11:52:14,936 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:52:14,937 - app - INFO - Initializing
+2024-09-27 11:57:16,633 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:57:16,633 - app - INFO - Initializing
+2024-09-27 11:57:29,694 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:57:29,694 - app - INFO - Initializing
+2024-09-27 11:57:31,613 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 11:57:31,613 - app - INFO - Initializing
+2024-09-27 12:11:51,907 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:12:03,723 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:12:03,723 - app - INFO - Initializing
+2024-09-27 12:12:07,574 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:12:07,574 - app - INFO - Initializing
+2024-09-27 12:12:19,422 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:12:23,531 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:12:25,613 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:12:32,469 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:13:03,689 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:13:03,689 - app - INFO - Initializing
+2024-09-27 12:17:02,675 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:17:02,676 - app - INFO - Initializing
+2024-09-27 12:18:06,688 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:18:06,689 - app - INFO - Initializing
+2024-09-27 12:18:12,650 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:18:12,650 - app - INFO - Initializing
+2024-09-27 12:18:28,499 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:32,739 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:49,863 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:52,104 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:53,730 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:56,205 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:57,767 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:18:58,953 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:00,250 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:01,532 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:03,930 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:05,515 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:07,088 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:19:08,443 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:21:26,944 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:21:26,944 - app - INFO - Initializing
+2024-09-27 12:21:31,891 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:21:34,956 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:21:36,652 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:21:38,009 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:22:54,106 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:22:54,106 - app - INFO - Initializing
+2024-09-27 12:22:56,016 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:22:56,016 - app - INFO - Initializing
+2024-09-27 12:23:46,624 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:23:58,689 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 12:25:27,479 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 12:25:27,479 - app - INFO - Initializing
+2024-09-27 18:33:47,836 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 18:33:47,836 - app - INFO - Initializing
+2024-09-27 18:33:49,842 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 18:33:49,842 - app - INFO - Initializing
+2024-09-27 18:43:06,844 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 19:02:45,353 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 19:25:59,324 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 19:46:08,741 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 19:46:08,743 - app - INFO - Initializing
+2024-09-27 19:50:10,544 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 19:50:10,545 - app - INFO - Initializing
+2024-09-27 19:52:46,494 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 19:52:46,494 - app - INFO - Initializing
+2024-09-27 19:55:25,496 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 19:55:25,496 - app - INFO - Initializing
+2024-09-27 19:58:27,622 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 19:58:27,622 - app - INFO - Initializing
+2024-09-27 20:06:28,701 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:06:28,701 - app - INFO - Initializing
+2024-09-27 20:09:03,822 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:09:03,822 - app - INFO - Initializing
+2024-09-27 20:16:12,800 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:16:12,800 - app - INFO - Initializing
+2024-09-27 20:16:19,794 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:16:19,795 - app - INFO - Initializing
+2024-09-27 20:18:33,027 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:18:33,027 - app - INFO - Initializing
+2024-09-27 20:18:34,976 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:18:34,976 - app - INFO - Initializing
+2024-09-27 20:19:32,257 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:19:32,258 - app - INFO - Initializing
+2024-09-27 20:23:57,945 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:23:57,945 - app - INFO - Initializing
+2024-09-27 20:24:49,218 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:24:49,219 - app - INFO - Initializing
+2024-09-27 20:26:47,472 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:26:47,473 - app - INFO - Initializing
+2024-09-27 20:41:31,500 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:41:31,500 - app - INFO - Initializing
+2024-09-27 20:42:56,287 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:42:56,287 - app - INFO - Initializing
+2024-09-27 20:43:01,290 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:43:01,291 - app - INFO - Initializing
+2024-09-27 20:45:40,700 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:45:40,700 - app - INFO - Initializing
+2024-09-27 20:49:43,417 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:49:43,417 - app - INFO - Initializing
+2024-09-27 20:52:27,661 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:52:27,663 - app - INFO - Initializing
+2024-09-27 20:57:45,786 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:57:45,786 - app - INFO - Initializing
+2024-09-27 20:57:48,779 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:57:48,779 - app - INFO - Initializing
+2024-09-27 20:58:31,453 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:58:31,453 - app - INFO - Initializing
+2024-09-27 20:58:34,523 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 20:58:34,524 - app - INFO - Initializing
+2024-09-27 21:00:01,670 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 21:00:01,670 - app - INFO - Initializing
+2024-09-27 21:00:38,029 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 21:00:38,029 - app - INFO - Initializing
+2024-09-27 21:01:29,980 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 21:01:29,981 - app - INFO - Initializing
+2024-09-27 21:02:13,488 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 21:02:13,489 - app - INFO - Initializing
+2024-09-27 21:02:17,630 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 21:02:17,631 - app - INFO - Initializing
+2024-09-27 21:06:40,321 - app - INFO - bloom and sysmpell reload triggered
+2024-09-27 22:42:40,702 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:42:40,703 - app - INFO - Initializing
+2024-09-27 22:42:43,478 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:42:43,478 - app - INFO - Initializing
+2024-09-27 22:44:31,047 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:44:31,048 - app - INFO - Initializing
+2024-09-27 22:44:44,717 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:44:44,717 - app - INFO - Initializing
+2024-09-27 22:45:09,539 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:45:09,539 - app - INFO - Initializing
+2024-09-27 22:56:23,580 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:56:23,580 - app - INFO - Initializing
+2024-09-27 22:56:49,841 - app - INFO - Logger initialized for module: app. Log file: /home/rpawar/Desktop/kagapa/spellcheck-backend/spellcheck-backend/logs/spellcheck_27_09_2024.log
+2024-09-27 22:56:49,841 - app - INFO - Initializing
+2024-09-27 23:31:31,346 - app - INFO - bloom and sysmpell reload triggered
+2024-09-28 00:06:23,881 - app - INFO - bloom and sysmpell reload triggered

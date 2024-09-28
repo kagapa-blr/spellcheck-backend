@@ -1,10 +1,13 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi import File, UploadFile
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
+from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
 from auth import admin_auth_required
 from database import Base, engine
@@ -47,10 +50,16 @@ app.include_router(bloom_api.router, prefix="/bloom/api/v1", tags=['BLOOM API'])
 app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpell API'])
 app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=['User Added'])
 
+# Serve static files from the 'static' directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the API"}
+# Set up the Jinja2 templates directory
+templates = Jinja2Templates(directory="templates")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 
 @app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
