@@ -21,7 +21,7 @@ class UserSignupRequest(BaseModel):
 
 
 # Response model for getting usernames
-class UserListResponse(BaseModel):
+class UsernameListResponse(BaseModel):
     usernames: List[str]
 
 
@@ -43,6 +43,13 @@ class UserLoginResponse(BaseModel):
 class UserExistenceResponse(BaseModel):
     username: str
     exists: bool
+
+
+class UserInfoResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+    phone: str
 
 
 @router.post("/signup", response_model=UserSignupResponse)
@@ -78,12 +85,12 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     return UserLoginResponse(access_token=access_token, token_type="bearer")
 
 
-@router.get("/users", response_model=UserListResponse)
+@router.get("/usernames", response_model=UsernameListResponse)
 def get_all_usernames(db: Session = Depends(get_db)):
     """Get a list of all usernames."""
     users = db.query(User.username).all()  # Fetch all usernames from the User table
     usernames = [user[0] for user in users]  # Extract usernames from the results
-    return UserListResponse(usernames=usernames)
+    return UsernameListResponse(usernames=usernames)
 
 
 @router.get("/check-user/{username}", response_model=UserExistenceResponse)
@@ -93,3 +100,10 @@ def check_user_exists(username: str, db: Session = Depends(get_db)):
 
     # Return response indicating whether the user exists
     return UserExistenceResponse(username=username, exists=user is not None)
+
+
+@router.get("/info", response_model=List[UserInfoResponse])
+def get_all_user_info(db: Session = Depends(get_db)):
+    """Get a list of all user information (without passwords)."""
+    users = db.query(User).all()  # Fetch all users from the User table
+    return users  # FastAPI automatically serializes it into JSON using the Pydantic model

@@ -44,7 +44,7 @@ app.add_middleware(
 )
 
 # Include the routers from the modules
-app.include_router(user.router, prefix="/user", tags=["User"])
+app.include_router(user.router, prefix="/user/api/v1", tags=["User"])
 app.include_router(dictionary.router, prefix="/dictionary/api/v1", tags=["Dictionary"])
 app.include_router(bloom_api.router, prefix="/bloom/api/v1", tags=['BLOOM API'])
 app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpell API'])
