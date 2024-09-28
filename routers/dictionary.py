@@ -1,7 +1,7 @@
-import os
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi import File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import MainDictionary
+from utilities.read_file_content import filter_words_from_file
 
 router = APIRouter()
 
@@ -120,26 +121,20 @@ def get_last_serial_number(db: Session) -> int:
 def process_words_in_batches(words, db: Session, batch_size=3000):
     added_words = []
     errors = []
-    batch = []
 
-    for word in words:
-        word = word.strip()
-        if not word:
-            continue
+    # Ensure that `words` is a list and strip each word
+    words = [word.strip() for word in words if word.strip()]  # Strip and filter out empty words
 
-        batch.append(word)  # Store word
+    # Check if there are no valid words
+    if not words:
+        return added_words, errors  # Return empty lists if there are no valid words
 
-        if len(batch) == batch_size:
-            added, failed = add_words_to_db(batch, db)
-            added_words.extend(added)
-            errors.extend(failed)
-            batch = []  # Reset batch after processing
-
-    # Process any remaining words in the final batch
-    if batch:
-        added, failed = add_words_to_db(batch, db)
-        added_words.extend(added)
-        errors.extend(failed)
+    # Process words in batches
+    for i in range(0, len(words), batch_size):  # Iterate in steps of batch_size
+        batch = words[i:i + batch_size]  # Create a slice for the current batch
+        added, failed = add_words_to_db(batch, db)  # Process the current batch
+        added_words.extend(added)  # Collect successfully added words
+        errors.extend(failed)  # Collect errors from the current batch
 
     return added_words, errors
 
@@ -172,18 +167,13 @@ def add_words_to_db(words, db: Session):
 
 
 # API to update the dictionary
-@router.get("/update-dictionary/", response_model=AddWordResponse)
-def update_dictionary(db: Session = Depends(get_db)):
+@router.post("/update/batch/", response_model=AddWordResponse)
+async def update_dictionary_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Update the main dictionary by adding words from a text file."""
-    file_path = "collection.txt"  # Path to the text file
+    # function will return list of missing words which needs to be add in dictionary
+    missing_words = await filter_words_from_file(file=file)
 
-    if not os.path.isfile(file_path):
-        raise HTTPException(status_code=404, detail="collection.txt file not found")
-
-    with open(file_path, "r") as file:
-        words = file.readlines()  # Read all words from the file
-
-    added_words, errors = process_words_in_batches(words, db, batch_size=1000)
+    added_words, errors = process_words_in_batches(words=missing_words, db=db, batch_size=1000)
 
     response_message = f"Added {len(added_words)} new words to the dictionary."
     if errors:
