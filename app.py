@@ -15,7 +15,7 @@ from logger_config import setup_logger
 from routers import user, dictionary, bloom_api, symspell_api, user_added_words_api
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
 from symspell.sym_spell import symspell_initialization
-from utilities.read_file_content import filter_words_from_file
+from utilities.read_file_content import filter_words_from_file, count_word_frequency
 
 # Set up logger with the module name
 logger = setup_logger(__name__)
@@ -90,6 +90,25 @@ async def upload_file(file: UploadFile = File(...)) -> dict:
     try:
         data = await filter_words_from_file(file)
         return {"wrong_words": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+
+
+@app.post('/word-frequency/data')
+async def word_frequency(file: UploadFile = File(...)) -> dict:
+    """
+    Endpoint to upload a.txt or.docx file and calculate word frequencies.
+
+    Args:
+        file (UploadFile): The uploaded file.
+
+    Returns:
+        dict: A JSON object containing the word frequencies.
+    """
+    try:
+        data = await count_word_frequency(file)
+        if data:
+            return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 

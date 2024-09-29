@@ -169,7 +169,16 @@ def add_words_to_db(words, db: Session):
 # API to update the dictionary
 @router.post("/update/batch/", response_model=AddWordResponse)
 async def update_dictionary_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Update the main dictionary by adding words from a text file."""
+    """
+    Update the main dictionary by adding words from a text file.
+
+    Parameters:
+    - file (UploadFile): An uploaded text file containing words to be added to the dictionary.
+    - db (Session): A SQLAlchemy Session object for database operations.
+
+    Returns:
+    - AddWordResponse: A response object containing a message indicating the number of new words added to the dictionary and any skipped words due to errors.
+    """
     # function will return list of missing words which needs to be add in dictionary
     missing_words = await filter_words_from_file(file=file)
 
