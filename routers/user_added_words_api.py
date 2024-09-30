@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db  # Import your database session
 from models import UserAddedWord
+from utilities.read_file_content import filter_missing_words_from_list
 
 router = APIRouter()
 
@@ -20,6 +21,11 @@ class UserAddedWordResponse(BaseModel):
 class AddUserWordRequest(BaseModel):
     word: str
     frequency: Optional[int] = 1
+
+
+# Request model for checking wrong words
+class CheckWrongWordsFromList(BaseModel):
+    wordlist: List[str]
 
 
 class RemoveUserWordRequest(BaseModel):
@@ -109,3 +115,18 @@ def remove_user_added_words(request: RemoveUserWordRequest, db: Session = Depend
     }
 
     return response_message  # Return a detailed response
+
+
+@router.post('/filter-wrongwords')
+async def filter_wrong_words(request: CheckWrongWordsFromList):
+    """Filter wrong words from the given list."""
+    try:
+        # Pass the list of words to the filtering function
+        filter_words = await filter_missing_words_from_list(words=request.wordlist)
+        if filter_words:
+            return filter_words
+        else:
+            return []  # Return an empty list if no wrong words are found
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")

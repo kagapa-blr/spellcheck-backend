@@ -113,6 +113,26 @@ async def filter_words_from_file(file: UploadFile) -> List[str]:
     return missing_words
 
 
+async def filter_missing_words_from_list(words: List[str]) -> List[str]:
+    """
+    Filters a list of words to remove those that are already present in a Bloom filter.
+
+    Args:
+        words (List[str]): A list of words to be filtered.
+
+    Returns:
+        List[str]: A list of words that are not present in the Bloom filter.
+
+    This function takes a list of words as input and uses the `filter_missing_words` function
+    to filter out the words that are already present in a Bloom filter. The filtered words are
+    then returned as a new list.
+    """
+    # Filter missing words using the Bloom filter
+    missing_words = filter_missing_words(words=words)
+
+    return missing_words
+
+
 async def count_word_frequency(file: UploadFile) -> dict:
     """
     Counts the frequency of each word in the uploaded .txt or .docx file.
