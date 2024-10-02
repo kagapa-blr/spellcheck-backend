@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,9 +8,10 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db
-from models import MainDictionary
-from utilities.read_file_content import filter_words_from_file
+from models import MainDictionary, User
+from utilities.read_file_content import filter_words_from_file, clean_words
 
 router = APIRouter()
 
@@ -118,36 +120,34 @@ def get_last_serial_number(db: Session) -> int:
 
 
 # Function to process words in batches of 1000
-def process_words_in_batches(words, db: Session, batch_size=3000):
+def process_words_in_batches(words: List[str], db: Session, username, batch_size=1000):
     added_words = []
     errors = []
 
-    # Ensure that `words` is a list and strip each word
-    words = [word.strip() for word in words if word.strip()]  # Strip and filter out empty words
-
-    # Check if there are no valid words
-    if not words:
-        return added_words, errors  # Return empty lists if there are no valid words
+    words_counter = Counter(words)  # Count frequencies
+    unique_words = list(words_counter.keys())  # Get unique words
 
     # Process words in batches
-    for i in range(0, len(words), batch_size):  # Iterate in steps of batch_size
-        batch = words[i:i + batch_size]  # Create a slice for the current batch
-        added, failed = add_words_to_db(batch, db)  # Process the current batch
+    for i in range(0, len(unique_words), batch_size):
+        batch = unique_words[i:i + batch_size]  # Create a slice for the current batch
+        added, failed = add_words_to_db(batch, db, words_counter, username)  # Pass frequency info
         added_words.extend(added)  # Collect successfully added words
         errors.extend(failed)  # Collect errors from the current batch
 
     return added_words, errors
 
 
-# Function to add words to the database
-def add_words_to_db(words, db: Session):
+# Function to add words to the database considering frequency
+def add_words_to_db(words: List[str], db: Session, words_counter: Counter, username):
     added_words = []
     errors = []
 
     for word in words:
+        frequency = words_counter[word]  # Get the frequency from Counter
         new_word = MainDictionary(
             word=word,
-            frequency=1  # No unique ID needed
+            frequency=frequency,
+            added_by_username=username,  # Use the provided username
         )
 
         try:
@@ -166,9 +166,10 @@ def add_words_to_db(words, db: Session):
     return added_words, errors
 
 
-# API to update the dictionary
 @router.post("/update/batch/", response_model=AddWordResponse)
-async def update_dictionary_batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def update_dictionary_batch(file: UploadFile = File(...), db: Session = Depends(get_db),
+                                  current_user: User = Depends(get_current_user)
+                                  ):
     """
     Update the main dictionary by adding words from a text file.
 
@@ -179,10 +180,16 @@ async def update_dictionary_batch(file: UploadFile = File(...), db: Session = De
     Returns:
     - AddWordResponse: A response object containing a message indicating the number of new words added to the dictionary and any skipped words due to errors.
     """
-    # function will return list of missing words which needs to be add in dictionary
+    # Function will return list of missing words which needs to be added to the dictionary
     missing_words = await filter_words_from_file(file=file)
+    words = clean_words(missing_words)
 
-    added_words, errors = process_words_in_batches(words=missing_words, db=db, batch_size=1000)
+    # Count the frequency of each word using Counter
+    word_frequency = Counter(words)
+    added_words, errors = process_words_in_batches(words=words, db=db,
+                                                   batch_size=1000,
+                                                   username=current_user.username
+                                                   )  # Use the full words list
 
     response_message = f"Added {len(added_words)} new words to the dictionary."
     if errors:
