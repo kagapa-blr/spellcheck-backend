@@ -1,8 +1,8 @@
 from pybloom_live import BloomFilter
 from sqlalchemy.orm import Session
 
-from logger_config import setup_logger
-from models import MainDictionary
+from config.logger_config import setup_logger
+from dbmodels.models import MainDictionary
 
 # Set up logger with the module name
 logger = setup_logger(__name__)

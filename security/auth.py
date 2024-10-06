@@ -7,8 +7,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from database import get_db
-from models import User
+from config.database import get_db
+from dbmodels.models import User
 
 SECRET_KEY = "ekannada"  # Replace with your secret key
 ALGORITHM = "HS256"

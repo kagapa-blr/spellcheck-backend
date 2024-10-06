@@ -9,9 +9,9 @@ from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from auth import admin_auth_required
-from database import Base, engine
-from logger_config import setup_logger
+from security.auth import admin_auth_required
+from config.database import Base, engine
+from config.logger_config import setup_logger
 from routers import user, dictionary, bloom_api, symspell_api, user_added_words_api
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
 from symspell.sym_spell import symspell_initialization

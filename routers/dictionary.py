@@ -8,9 +8,9 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError  # Import IntegrityError for specific handling
 from sqlalchemy.orm import Session
 
-from auth import get_current_user
-from database import get_db
-from models import MainDictionary, User
+from security.auth import get_current_user
+from config.database import get_db
+from dbmodels.models import MainDictionary, User
 from utilities.read_file_content import filter_words_from_file, clean_words
 
 router = APIRouter()

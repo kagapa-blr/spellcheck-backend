@@ -2,8 +2,8 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from symspellpy import SymSpell
 
-from database import get_db
-from models import MainDictionary
+from config.database import get_db
+from dbmodels.models import MainDictionary
 
 # Initialize SymSpell
 sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)

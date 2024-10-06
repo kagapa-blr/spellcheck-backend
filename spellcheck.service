@@ -1,0 +1,18 @@
+[Unit]
+Description=Gunicorn instance to serve the spellcheck project
+After=network.target
+
+[Service]
+User=kcuser
+Group=kcuser
+WorkingDirectory=/home/kcuser/apps/spellcheck
+ExecStart=/home/kcuser/apps/spellcheck/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8443 app:app
+StandardOutput=file:/home/kcuser/apps/spellcheck/logs/out.log
+StandardError=file:/home/kcuser/apps/spellcheck/logs/error.log
+Restart=always
+RestartSec=10
+Environment="PATH=/home/kcuser/apps/spellcheck/venv/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr  # For validation
 from sqlalchemy.orm import Session
 
-from auth import create_access_token, get_password_hash, verify_password
-from database import get_db
-from models import User
+from security.auth import create_access_token, get_password_hash, verify_password
+from config.database import get_db
+from dbmodels.models import User
 
 router = APIRouter()
 

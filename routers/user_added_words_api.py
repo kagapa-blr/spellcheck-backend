@@ -5,8 +5,8 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from database import get_db  # Import your database session
-from models import UserAddedWord
+from config.database import get_db  # Import your database session
+from dbmodels.models import UserAddedWord
 from utilities.read_file_content import filter_missing_words_from_list
 
 router = APIRouter()

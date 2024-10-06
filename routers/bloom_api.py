@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from bloom_filter.filter import BloomWordFilter
-from database import get_db
-from logger_config import setup_logger
+from config.database import get_db
+from config.logger_config import setup_logger
 
 # Set up logger with the module name
 logger = setup_logger(__name__)
