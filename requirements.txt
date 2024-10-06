@@ -1,0 +1,12 @@
+fastapi
+starlette
+SQLAlchemy
+alembic
+pytz
+python-jose
+passlib
+pydantic
+symspellpy
+python-docx
+python-dotenv
+pybloom_live
