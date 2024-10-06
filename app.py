@@ -51,6 +51,7 @@ app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpe
 app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=['User Added'])
 
 # Serve static files from the 'static' directory
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Set up the Jinja2 templates directory
