@@ -7,7 +7,10 @@ from sqlalchemy.orm import Session
 
 from bloom_filter.filter import BloomWordFilter
 from database import get_db
+from logger_config import setup_logger
 
+# Set up logger with the module name
+logger = setup_logger(__name__)
 router = APIRouter()
 
 last_update_timestamp = None  # Initialize to None
@@ -39,7 +42,7 @@ async def bloom_initialization():
         loaded_bloom = BloomWordFilter(db, error_rate=0.001)
         loaded_bloom.load_words(db)  # Load words into the Bloom filter
         last_update_timestamp = datetime.now()  # Set the current UTC time
-        print("Bloom filter initialized successfully.")
+        logger.info("Bloom filter initialized successfully.")
 
 
 async def bloom_reinitialization():
@@ -48,7 +51,7 @@ async def bloom_reinitialization():
     if loaded_bloom is not None:  # Only reinitialize if initialized
         loaded_bloom = None  # Reset the global variable
         await bloom_initialization()  # Reinitialize the Bloom filter
-        print("Bloom filter reinitialized successfully.")
+        logger.info("Bloom filter reinitialized successfully.")
 
 
 @router.post("/check_word/")

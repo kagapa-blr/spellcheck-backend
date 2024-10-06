@@ -1,7 +1,11 @@
 from pybloom_live import BloomFilter
 from sqlalchemy.orm import Session
 
+from logger_config import setup_logger
 from models import MainDictionary
+
+# Set up logger with the module name
+logger = setup_logger(__name__)
 
 
 class BloomWordFilter:
@@ -10,7 +14,7 @@ class BloomWordFilter:
         self.word_count = db.query(MainDictionary).count()
         # If no words in the database, assign a default capacity of 100,000
         if self.word_count == 0:
-            print("No words found in the database. Assigning default capacity of 100,000.")
+            logger.info("No words found in the database. Assigning default capacity of 100,000.")
             self.word_count = 100000
         # Initialize the Bloom filter with the word count as capacity
         self.bloom_filter = BloomFilter(capacity=self.word_count, error_rate=error_rate)
@@ -20,7 +24,7 @@ class BloomWordFilter:
         words = db.query(MainDictionary.word).all()
         for word, in words:  # Unpack the tuple returned by query
             self.bloom_filter.add(word)
-        print(f"Bloom filter loaded with {self.word_count} words.")
+        logger.info(f"Bloom filter loaded with {self.word_count} words.")
         # return self.bloom_filter
 
     def __contains__(self, word: str) -> bool:
