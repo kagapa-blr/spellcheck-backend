@@ -4,7 +4,11 @@
 
 The Spellcheck Project is a Python-based application designed to provide efficient spell-checking capabilities. It
 utilizes advanced algorithms, including Bloom filters and SymSpell, to quickly identify and correct misspelled words in
-various text documents. This project is built using Flask and deployed with Gunicorn.
+various text documents. This project is built using Fast API and deployed with Gunicorn.
+
+- frontend: React JS
+- backend: Fast API
+- Application server: Uvicorn server
 
 ## Table of Contents
 
