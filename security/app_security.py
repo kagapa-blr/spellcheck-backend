@@ -1,9 +1,13 @@
 import os
+from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+
+# Load environment variables from the .env file
+load_dotenv()
 
 def add_security_middleware(app):
     """
@@ -13,8 +17,11 @@ def add_security_middleware(app):
     # Enable GZip middleware for better performance
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+    # Get the environment variable from .env file
+    environment = os.getenv("ENV", "dev")
+
     # Allow HTTP connections for local development, enforce HTTPS for production
-    if os.getenv("ENV", "development") != "development":
+    if environment != "dev":
         app.add_middleware(HTTPSRedirectMiddleware)
 
     # Trusted Hosts Middleware to prevent Host header attacks
