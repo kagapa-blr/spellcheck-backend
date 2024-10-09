@@ -3,3 +3,4 @@ logs
 *.iml
 __pycache__
 alembic
+*.pyc
