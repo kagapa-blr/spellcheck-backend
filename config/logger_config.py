@@ -1,13 +1,13 @@
 import logging
 import os
 from datetime import datetime
-
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))  # Moves one level up
 
 def setup_logger(module_name):
     """Set up a logger for the specified module name."""
 
     # Get the root directory of the project
-    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    #PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
     # Create a logs directory if it doesn't exist
     LOGS_DIR = os.path.join(PROJECT_ROOT, 'logs')
