@@ -1,14 +1,12 @@
+# app.py
 from contextlib import asynccontextmanager
 
-from fastapi import Depends
-from fastapi import FastAPI, Request
-from fastapi import File, UploadFile
-from fastapi import HTTPException
-from fastapi.middleware.cors import CORSMiddleware  # Import CORSMiddleware
+from fastapi import Depends, FastAPI, Request, File, UploadFile, HTTPException
 from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
+from security.app_security import add_security_middleware
 from security.auth import admin_auth_required
 from config.database import Base, engine
 from config.logger_config import setup_logger
@@ -34,14 +32,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Allow CORS for all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # You can specify allowed origins here
-    allow_credentials=True,
-    allow_methods=["*"],  # You can specify allowed methods here
-    allow_headers=["*"],  # You can specify allowed headers here
-)
+# Add security middleware
+add_security_middleware(app)
 
 # Include the routers from the modules
 app.include_router(user.router, prefix="/user/api/v1", tags=["User"])
