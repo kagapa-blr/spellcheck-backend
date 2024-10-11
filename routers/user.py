@@ -79,7 +79,11 @@ def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=UserLoginResponse)
 def login(request: UserLoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == request.username).first()
+    # Check if the user exists by username or email
+    user = db.query(User).filter(
+        (User.username == request.username) | (User.email == request.username)
+    ).first()  # Use the username field to check both username and email
+
     if not user or not verify_password(request.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
