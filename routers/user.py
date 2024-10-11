@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr  # For validation
 from sqlalchemy.orm import Session
 
-from security.auth import create_access_token, get_password_hash, verify_password
+from security.auth import create_access_token, get_password_hash, verify_password, get_current_user, \
+    default_admin_username
 from config.database import get_db
 from dbmodels.models import User
 
@@ -105,10 +106,15 @@ def check_user_exists(username: str, db: Session = Depends(get_db)):
 
 
 @router.get("/info", response_model=List[UserInfoResponse])
-def get_all_user_info(db: Session = Depends(get_db)):
-    users = db.query(User).all()  # Fetch all users from the User table
-    return users  # FastAPI automatically serializes it into JSON using the Pydantic model
-
+def get_all_user_info(db: Session = Depends(get_db),
+                      current_user: User = Depends(get_current_user)):
+    # Check if the current user is an admin
+    if current_user.username==default_admin_username:
+        # If the current user is admin, return all users
+        users = db.query(User).all()
+    else:
+        users = [db.query(User).filter(User.username == current_user.username).first()]  # Wrap in a list
+    return users
 
 @router.delete("/delete-user/{username}", response_model=UserSignupResponse)
 def delete_user(username: str, db: Session = Depends(get_db)):
