@@ -1,6 +1,8 @@
+import os
 from datetime import datetime, timedelta
 
 import pytz
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -10,10 +12,12 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from dbmodels.models import User
 
+load_dotenv()
 SECRET_KEY = "ekannada"  # Replace with your secret key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
+default_admin_username = os.getenv("ADMIN_USERNAME")
+default_admin_password = os.getenv("ADMIN_PASSWORD")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login")
 
@@ -79,3 +83,40 @@ def admin_auth_required(token: str = Depends(oauth2_scheme), db: Session = Depen
 
     # If the token is valid, return the user
     return user
+
+
+
+from sqlalchemy.exc import SQLAlchemyError
+from config.database import SessionLocal  # Assuming you have this set up for your session management
+def create_default_admin():
+    db = SessionLocal()  # Initialize the session properly
+    try:
+        # Check if the admin user already exists
+        admin_user = db.query(User).filter_by(username=default_admin_username).first()
+
+        if not admin_user:
+            # If admin doesn't exist, create it
+            admin_password_hashed = get_password_hash(default_admin_password)  # Use the correct hashing function
+            new_admin = User(
+                username=default_admin_username,
+                email="admin@example.com",  # You can customize the email
+                phone="1234567",  # You can customize the phone
+                password=admin_password_hashed
+            )
+            db.add(new_admin)
+            db.commit()
+            print("Default admin user created.")
+        else:
+            # If admin user exists, update the password
+            admin_password_hashed = get_password_hash(default_admin_password)
+            admin_user.password = admin_password_hashed
+            db.commit()
+            print("Admin user password updated.")
+    except SQLAlchemyError as e:
+        db.rollback()
+        print(f"Error creating or updating admin user: {str(e)}")
+    finally:
+        db.close()
+
+# Call the function to insert or update the default admin user
+create_default_admin()
