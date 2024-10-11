@@ -6,7 +6,7 @@ from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from security.app_security import add_security_middleware
-from security.auth import admin_auth_required
+from security.auth import admin_auth_required, create_default_admin
 from config.database import Base, engine
 from config.logger_config import setup_logger
 from routers import user, dictionary, bloom_api, symspell_api, user_added_words_api
@@ -25,6 +25,8 @@ async def lifespan(app: FastAPI):
     await bloom_initialization()
     # Load the dictionary into SymSpell on startup
     symspell_initialization()
+    #default admin creating
+    await create_default_admin()
     yield
     print("application stopped")
 

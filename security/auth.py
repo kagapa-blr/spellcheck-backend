@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
-
+from sqlalchemy.exc import SQLAlchemyError
+from config.database import SessionLocal
 import pytz
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -86,9 +87,8 @@ def admin_auth_required(token: str = Depends(oauth2_scheme), db: Session = Depen
 
 
 
-from sqlalchemy.exc import SQLAlchemyError
-from config.database import SessionLocal  # Assuming you have this set up for your session management
-def create_default_admin():
+
+async def create_default_admin():
     db = SessionLocal()  # Initialize the session properly
     try:
         # Check if the admin user already exists
@@ -118,5 +118,3 @@ def create_default_admin():
     finally:
         db.close()
 
-# Call the function to insert or update the default admin user
-create_default_admin()
