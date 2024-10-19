@@ -27,7 +27,7 @@ def add_security_middleware(app):
     # Trusted Hosts Middleware to prevent Host header attacks
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*.karnataka.gov.in", "127.0.0.1", "localhost", "*.yourdomain.com"]
+        allowed_hosts=["*.karnataka.gov.in", "127.0.0.1", "localhost", "*"]
     )
 
     # Allow CORS for trusted origins

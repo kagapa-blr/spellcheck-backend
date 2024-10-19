@@ -1,5 +1,5 @@
-import{r as a}from"./react-87inLI7G.js";import{i as p,g as L,r as F,j as R,A as J,p as M,s as z,m as w,a as A}from"./@remix-run-kM2C-PwP.js";/**
- * React Router v6.26.2
+import{r as a}from"./react-87inLI7G.js";import{i as p,g as L,r as F,j as R,A as J,p as M,s as z,m as w,a as A}from"./@remix-run-CGjFHglr.js";/**
+ * React Router v6.27.0
  *
  * Copyright (c) Remix Software Inc.
  *
