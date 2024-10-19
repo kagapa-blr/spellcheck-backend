@@ -1,4 +1,5 @@
 # routers/bloom_api.py
+import re
 from datetime import datetime
 
 from fastapi import APIRouter
@@ -54,15 +55,27 @@ async def bloom_reinitialization():
         logger.info("Bloom filter reinitialized successfully.")
 
 
+
+
 @router.post("/check_word/")
 async def check_word_in_bloom(request: WordCheckRequest):
     """Check if a word exists in the Bloom filter."""
-    if loaded_bloom == None:
+    if loaded_bloom is None:
         return {
             "message": "Bloom filter is not initialized. Please wait for the application to start.",
             "status": "not_initialized"
         }
+
     word = request.word
+
+    # Check if the word contains only English letters or digits
+    if re.match(r'^[a-zA-Z0-9]+$', word):
+        return {
+            "message": f"The word '{word}' contains only English letters or digits.",
+            "status": True
+        }
+
+    # Check the Bloom filter for non-English words
     if word in loaded_bloom:
         return {
             "message": f"The word '{word}' is present in the Main Dictionary.",
