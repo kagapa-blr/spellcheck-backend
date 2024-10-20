@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from config.database import get_db  # Import your database session
 from dbmodels.models import UserAddedWord
-from utilities.read_file_content import filter_missing_words_from_list
+from utilities.read_file_content import filter_missing_words_from_list, clean_single_word
 
 router = APIRouter()
 
@@ -51,7 +51,8 @@ def get_all_user_added_words(db: Session = Depends(get_db)):
 @router.post("/user-added-words/", response_model=UserAddedWordResponse)
 def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_db)):
     """Add a new word to the user_added_words table or update its frequency if it exists."""
-    existing_word = db.query(UserAddedWord).filter(UserAddedWord.word == request.word).first()
+    given_word = clean_single_word(request.word)
+    existing_word = db.query(UserAddedWord).filter(UserAddedWord.word == given_word).first()
 
     if existing_word:
         # Update the frequency by 1
@@ -70,7 +71,7 @@ def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_d
 
     # If the word doesn't exist, create a new entry
     new_word = UserAddedWord(
-        word=request.word,
+        word=given_word,
         frequency=request.frequency if request.frequency else 1
     )
 

@@ -51,6 +51,19 @@ def clean_words(words: List[str]) -> List[str]:
         if cleaned_word:
             cleaned_words.append(cleaned_word.strip())  # Optionally convert to lowercase
     return cleaned_words
+def clean_single_word(word: str) -> str:
+    """
+    Cleans a single word by removing unwanted characters.
+
+    Args:
+        word (str): The word to be cleaned.
+
+    Returns:
+        str: The cleaned word.
+    """
+    # Remove unwanted characters using the translation table
+    cleaned_word = word.translate(translation_table)
+    return cleaned_word.strip()  # Optionally convert to lowercase if needed
 
 
 async def extract_words_from_docx(file: UploadFile) -> List[str]:
