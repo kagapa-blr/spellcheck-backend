@@ -1,12 +1,12 @@
 [Unit]
-Description=Gunicorn instance to serve the spellcheck project
+Description=Uvicorn instance to serve the spellcheck project
 After=network.target
 
 [Service]
 User=kcuser
 Group=kcuser
 WorkingDirectory=/home/kcuser/apps/spellcheck-backend
-ExecStart=/home/kcuser/apps/spellcheck-backend/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8443 app:app
+ExecStart=/home/kcuser/apps/spellcheck-backend/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8443
 StandardOutput=file:/home/kcuser/apps/spellcheck-backend/logs/out.log
 StandardError=file:/home/kcuser/apps/spellcheck-backend/logs/error.log
 Restart=always
