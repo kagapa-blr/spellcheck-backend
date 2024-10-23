@@ -11,3 +11,4 @@ python-docx
 python-dotenv
 pybloom_live
 pymysql
+passlib[bcrypt]
