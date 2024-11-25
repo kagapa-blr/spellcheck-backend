@@ -94,6 +94,23 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return UserLoginResponse(access_token=access_token, token_type="bearer")
+@router.post("/generate/token", response_model=UserLoginResponse)
+def generate_access_token(request: UserLoginRequest, db: Session = Depends(get_db)):
+    # Check if the user exists by username or email
+    user = db.query(User).filter(
+        (User.username == request.username) | (User.email == request.username)
+    ).first()  # Use the username field to check both username and email
+
+    if not user or not verify_password(request.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token_expires = timedelta(minutes=60)
+    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
+    return UserLoginResponse(access_token=access_token, token_type="bearer")
 
 
 @router.get("/usernames", response_model=UsernameListResponse)
