@@ -1,3 +1,11 @@
+#auth.py
+"""
+Author: Ravikumar Pawar
+Email: ravi.ravipawar17@gmail.com
+Description:Ekannada Spellcheck Application authorization usage
+Date:25-11-2025
+"""
+
 import os
 from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,7 +28,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 default_admin_username = os.getenv("ADMIN_USERNAME")
 default_admin_password = os.getenv("ADMIN_PASSWORD")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="user/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/kaagunitha/user/api/v1/generate/token")
 
 
 def verify_password(plain_password, hashed_password):
@@ -118,3 +126,27 @@ async def create_default_admin():
     finally:
         db.close()
 
+
+def generate_token(username: str, password: str, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == username).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Verify if the password is correct
+    if not verify_password(password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # If credentials are valid, create and return access token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": username}, expires_delta=access_token_expires)
+
+    return {"access_token": access_token, "token_type": "bearer"}

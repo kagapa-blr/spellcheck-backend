@@ -1,7 +1,8 @@
 from datetime import timedelta
 from typing import List, Optional
+from fastapi.security import OAuth2PasswordRequestForm
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Form
 from pydantic import BaseModel, EmailStr  # For validation
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,10 @@ class UserInfoResponse(BaseModel):
     username: str
     email: str
     phone: str
-
+# Pydantic model for request body
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 @router.post("/signup", response_model=UserSignupResponse)
 def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
@@ -95,13 +99,24 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return UserLoginResponse(access_token=access_token, token_type="bearer")
 @router.post("/generate/token", response_model=UserLoginResponse)
-def generate_access_token(request: UserLoginRequest, db: Session = Depends(get_db)):
-    # Check if the user exists by username or email
+def generate_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+):
+    username = form_data.username
+    password = form_data.password
     user = db.query(User).filter(
-        (User.username == request.username) | (User.email == request.username)
-    ).first()  # Use the username field to check both username and email
+        (User.username == username) | (User.email == username)
+    ).first()
 
-    if not user or not verify_password(request.password, user.password):
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
@@ -110,7 +125,7 @@ def generate_access_token(request: UserLoginRequest, db: Session = Depends(get_d
 
     access_token_expires = timedelta(minutes=60)
     access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
-    return UserLoginResponse(access_token=access_token, token_type="bearer")
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/usernames", response_model=UsernameListResponse)
