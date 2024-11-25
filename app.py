@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_oauth2_redirect_html, get_swagger_ui_html, get_redoc_html
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -31,24 +31,28 @@ async def lifespan(app: FastAPI):
     print("application stopped")
 
 
-app = FastAPI(lifespan=lifespan,
-              docs_url=None,
-              redoc_url=None,
-  title="Spellcheck",  # Name of the app
-    description="Spellcheck application for Kannada language"  # Description of the app
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    title="Spellcheck",  # Name of the app
+    description="Spellcheck application for Kannada language",  # Description of the app
+    root_path="/kaagunitha"  # Add this line to set the basepath for all endpoints
 )
 
 
 
-@app.get("/docs", include_in_schema=False)
+@app.get("/docs", include_in_schema=False,dependencies=[Depends(admin_auth_required)])
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
         title=app.title + " - Swagger UI",
         oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-        swagger_js_url="static/js/swagger-ui-bundle.js",
-        swagger_css_url="static/css/swagger-ui.css",
+        swagger_js_url="/kaagunitha/static/js/swagger-ui-bundle.js",
+        swagger_css_url="/kaagunitha/static/css/swagger-ui.css",
+
     )
+
 
 
 @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
@@ -56,12 +60,12 @@ async def swagger_ui_redirect():
     return get_swagger_ui_oauth2_redirect_html()
 
 
-@app.get("/redoc", include_in_schema=False)
+@app.get("/redoc", include_in_schema=False,dependencies=[Depends(admin_auth_required)])
 async def redoc_html():
     return get_redoc_html(
         openapi_url=app.openapi_url,
         title=app.title + " - ReDoc",
-        redoc_js_url="static/js/swagger-ui-bundle.js",
+        redoc_js_url="/kaagunitha/static/js/swagger-ui-bundle.js",
     )
 
 
@@ -75,9 +79,8 @@ app.include_router(bloom_api.router, prefix="/bloom/api/v1", tags=['BLOOM API'])
 app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=['SymSpell API'])
 app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=['User Added'])
 
-# Serve static files from the 'static' directory
-app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
 
 # Set up the Jinja2 templates directory
 templates = Jinja2Templates(directory="templates")
@@ -86,6 +89,7 @@ templates = Jinja2Templates(directory="templates")
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 
 @app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
