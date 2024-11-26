@@ -1,3 +1,14 @@
+"""
+Author       : Ravikumar Pawar
+Email        : ravi.ravipawar17@gmail.com
+Application  : Kannada Spellcheck Application
+Description  : This application is specifically designed for the Kannada language
+               to provide robust spellchecking functionality. It leverages advanced
+               linguistic algorithms and Kannada language processing techniques to
+               identify and correct misspelled words effectively.
+
+"""
+
 from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Request, File, UploadFile, HTTPException
 from fastapi.openapi.docs import get_swagger_ui_oauth2_redirect_html, get_swagger_ui_html, get_redoc_html
@@ -42,7 +53,7 @@ app = FastAPI(
 
 
 
-@app.get("/docs", include_in_schema=False)
+@app.get("/swagger", include_in_schema=False)
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(
         openapi_url=app.openapi_url,
@@ -142,6 +153,10 @@ async def word_frequency(file: UploadFile = File(...)) -> dict:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
-
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    original_path = request.url.path  # Get the original path
+    redirect_url = f"/#/not-found{original_path}"  # Construct redirect URL
+    return RedirectResponse(url=redirect_url)
 if __name__ == "__main__":
     print("Running app with uvicorn...")
