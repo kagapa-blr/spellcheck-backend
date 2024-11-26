@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from config.database import get_db  # Import your database session
 from dbmodels.models import UserAddedWord
+from security.auth import get_current_user
 from utilities.read_file_content import filter_missing_words_from_list, clean_single_word
 
 router = APIRouter()
@@ -32,14 +33,14 @@ class RemoveUserWordRequest(BaseModel):
     words: List[str]  # Accept a list
 
 
-@router.get('/user-added-words/stats', response_model=int)
+@router.get('/user-added-words/stats', response_model=int,dependencies=[Depends(get_current_user)])
 def get_user_added_word_stats(db: Session = Depends(get_db)):
     """Get the total number of words in the user_added_words table."""
     total_count = db.query(UserAddedWord).count()
     return total_count
 
 
-@router.get("/user-added-words/", response_model=List[UserAddedWordResponse])
+@router.get("/user-added-words/", response_model=List[UserAddedWordResponse],dependencies=[Depends(get_current_user)])
 def get_all_user_added_words(db: Session = Depends(get_db)):
     """Get all words from the user_added_words table."""
     words = db.query(UserAddedWord).all()
@@ -92,7 +93,7 @@ def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_d
                             detail="Failed to add word. The added_by_username must exist in the users table.")
 
 
-@router.delete("/user-added-words/remove/", response_model=dict)
+@router.delete("/user-added-words/remove/", response_model=dict,dependencies=[Depends(get_current_user)])
 def remove_user_added_words(request: RemoveUserWordRequest, db: Session = Depends(get_db)):
     """Remove a list of words from the user_added_words table."""
     removed_words = []

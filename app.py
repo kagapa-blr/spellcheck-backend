@@ -124,7 +124,7 @@ async def upload_file(file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
-@app.post('/word-frequency/data')
+@app.post('/word-frequency/data',dependencies=[Depends(admin_auth_required)])
 async def word_frequency(file: UploadFile = File(...)) -> dict:
     """
     Endpoint to upload a.txt or.docx file and calculate word frequencies.

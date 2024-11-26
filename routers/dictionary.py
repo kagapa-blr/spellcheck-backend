@@ -81,7 +81,7 @@ def add_words_to_dictionary(request: WordRequest, db: Session = Depends(get_db))
 
 
 # API to update a word
-@router.put("/update-word/", response_model=AddWordResponse)
+@router.put("/update-word/", response_model=AddWordResponse,dependencies=[Depends(get_current_user)])
 def update_word(request: WordRequest, db: Session = Depends(get_db)):
     if len(request.words) != 1:
         raise HTTPException(status_code=400, detail="Update requires exactly one word.")
@@ -97,7 +97,7 @@ def update_word(request: WordRequest, db: Session = Depends(get_db)):
 
 
 # API to delete a word
-@router.delete("/delete-word/", response_model=AddWordResponse)
+@router.delete("/delete-word/", response_model=AddWordResponse,dependencies=[Depends(get_current_user)])
 def delete_word(request: WordRequest, db: Session = Depends(get_db)):
     if len(request.words) != 1:
         raise HTTPException(status_code=400, detail="Deletion requires exactly one word.")

@@ -64,7 +64,7 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-@router.post("/signup", response_model=UserSignupResponse)
+@router.post("/signup", response_model=UserSignupResponse, dependencies=[Depends(get_current_user)])
 def signup(request: UserSignupRequest, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.username == request.username).first()
     if existing_user:
@@ -128,14 +128,14 @@ def generate_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/usernames", response_model=UsernameListResponse)
+@router.get("/usernames", response_model=UsernameListResponse,dependencies=[Depends(get_current_user)])
 def get_all_usernames(db: Session = Depends(get_db)):
     users = db.query(User.username).all()  # Fetch all usernames from the User table
     usernames = [user[0] for user in users]  # Extract usernames from the results
     return UsernameListResponse(usernames=usernames)
 
 
-@router.get("/check-user/{username}", response_model=UserExistenceResponse)
+@router.get("/check-user/{username}", response_model=UserExistenceResponse,dependencies=[Depends(get_current_user)])
 def check_user_exists(username: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
     return UserExistenceResponse(username=username, exists=user is not None)
@@ -152,7 +152,7 @@ def get_all_user_info(db: Session = Depends(get_db),
         users = [db.query(User).filter(User.username == current_user.username).first()]  # Wrap in a list
     return users
 
-@router.delete("/delete-user/{username}", response_model=UserSignupResponse)
+@router.delete("/delete-user/{username}", response_model=UserSignupResponse,dependencies=[Depends(get_current_user)])
 def delete_user(username: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
 
@@ -168,7 +168,7 @@ def delete_user(username: str, db: Session = Depends(get_db)):
     return UserSignupResponse(message="User deleted successfully")
 
 
-@router.put("/update-user/{username}", response_model=UserSignupResponse)
+@router.put("/update-user/{username}", response_model=UserSignupResponse,dependencies=[Depends(get_current_user)])
 def update_user(username: str, request: UserUpdateRequest, db: Session = Depends(get_db)):
     """Update a user's details in the database by username."""
     user = db.query(User).filter(User.username == username).first()
