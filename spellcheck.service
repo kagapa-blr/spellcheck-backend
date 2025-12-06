@@ -1,5 +1,5 @@
 [Unit]
-Description=Uvicorn instance to serve the spellcheck project
+Description=Uvicorn instance to serve Kannada Spellcheck project
 After=network.target
 
 [Service]
