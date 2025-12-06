@@ -22,12 +22,12 @@ from config.database import get_db
 from dbmodels.models import User
 
 load_dotenv()
-SECRET_KEY = "ekannada"  # Replace with your secret key
+SECRET_KEY = os.getenv('SECRET_KEY')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 default_admin_username = os.getenv("ADMIN_USERNAME")
 default_admin_password = os.getenv("ADMIN_PASSWORD")
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/kaagunitha/user/api/v1/generate/token")
 
 

@@ -12,3 +12,5 @@ python-dotenv
 pybloom_live
 pymysql
 passlib[bcrypt]
+passlib[argon2]
+cryptography
