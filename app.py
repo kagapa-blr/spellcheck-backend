@@ -40,6 +40,7 @@ from utilities.read_file_content import filter_words_from_file, count_word_frequ
 logger = setup_logger(__name__)
 logger.info("Application initializing...")
 
+
 # -----------------------------
 # FastAPI Lifespan
 # -----------------------------
@@ -78,6 +79,7 @@ app = FastAPI(
     description="Spellcheck application for Kannada language",
     root_path="/kaagunitha",
 )
+
 
 # -----------------------------
 # Swagger & ReDoc
@@ -191,5 +193,5 @@ async def custom_404_handler(request: Request, exc):
 # Run
 # -----------------------------
 if __name__ == "__main__":
-    #uvicorn.run("app:app", host="0.0.0.0", port=8443, reload=True)
+    # uvicorn.run("app:app", host="0.0.0.0", port=8443, reload=True)
     print("Running app with uvicorn...")

@@ -5,13 +5,15 @@ from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from config.database import get_db  # Import your database session
+from config.database import get_db
 from dbmodels.models import UserAddedWord
 from security.auth import get_current_user
 from utilities.read_file_content import filter_missing_words_from_list, clean_single_word
 
 router = APIRouter()
 
+
+# ---------------------- Pydantic Models ---------------------- #
 
 class UserAddedWordResponse(BaseModel):
     id: int
@@ -24,111 +26,107 @@ class AddUserWordRequest(BaseModel):
     frequency: Optional[int] = 1
 
 
-# Request model for checking wrong words
 class CheckWrongWordsFromList(BaseModel):
     wordlist: List[str]
 
 
 class RemoveUserWordRequest(BaseModel):
-    words: List[str]  # Accept a list
+    words: List[str]
 
 
-@router.get('/user-added-words/stats', response_model=int,dependencies=[Depends(get_current_user)])
+# ---------------------- Routes ---------------------- #
+
+@router.get(
+    "/user-added-words/stats",
+    response_model=int,
+    dependencies=[Depends(get_current_user)]
+)
 def get_user_added_word_stats(db: Session = Depends(get_db)):
-    """Get the total number of words in the user_added_words table."""
-    total_count = db.query(UserAddedWord).count()
-    return total_count
+    """Return total number of words in user_added_words."""
+    return db.query(UserAddedWord).count()
 
 
-@router.get("/user-added-words/", response_model=List[UserAddedWordResponse],dependencies=[Depends(get_current_user)])
+@router.get(
+    "/user-added-words/",
+    response_model=List[UserAddedWordResponse],
+    dependencies=[Depends(get_current_user)]
+)
 def get_all_user_added_words(db: Session = Depends(get_db)):
-    """Get all words from the user_added_words table."""
-    words = db.query(UserAddedWord).all()
-    if not words:  # Check if the list is empty
-        raise HTTPException(status_code=404, detail="No words found in the database.")
-    return words  # Return the list directly if not empty
+    """Return all user-added words. Returns [] if none exist."""
+    return db.query(UserAddedWord).all() or []
 
 
-@router.post("/user-added-words/", response_model=UserAddedWordResponse)
+@router.post(
+    "/user-added-words/",
+    response_model=UserAddedWordResponse
+)
 def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_db)):
-    """Add a new word to the user_added_words table or update its frequency if it exists."""
+    """Add or update a user-added word."""
     given_word = clean_single_word(request.word)
-    existing_word = db.query(UserAddedWord).filter(UserAddedWord.word == given_word).first()
+
+    existing_word = db.query(UserAddedWord).filter(
+        UserAddedWord.word == given_word
+    ).first()
 
     if existing_word:
-        # Update the frequency by 1
         existing_word.frequency += 1
-        db.commit()  # Commit the update
-
-        # Refresh the updated object to get the latest values
+        db.commit()
         db.refresh(existing_word)
+        return existing_word
 
-        # Construct the response using UserAddedWordResponse model
-        return UserAddedWordResponse(
-            id=existing_word.id,
-            word=existing_word.word,
-            frequency=existing_word.frequency
-        )
-
-    # If the word doesn't exist, create a new entry
     new_word = UserAddedWord(
         word=given_word,
-        frequency=request.frequency if request.frequency else 1
+        frequency=request.frequency or 1
     )
 
     try:
         db.add(new_word)
         db.commit()
-        db.refresh(new_word)  # Refresh to get the updated object
-
-        # Construct the response using UserAddedWordResponse model
-        return UserAddedWordResponse(
-            id=new_word.id,
-            word=new_word.word,
-            frequency=new_word.frequency
-        )
+        db.refresh(new_word)
+        return new_word
     except IntegrityError:
-        db.rollback()  # Rollback the transaction if there's an error
-        raise HTTPException(status_code=400,
-                            detail="Failed to add word. The added_by_username must exist in the users table.")
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to add word. The added_by_username must exist in the users table."
+        )
 
 
-@router.delete("/user-added-words/remove/", response_model=dict,dependencies=[Depends(get_current_user)])
+@router.delete(
+    "/user-added-words/remove/",
+    response_model=dict,
+    dependencies=[Depends(get_current_user)]
+)
 def remove_user_added_words(request: RemoveUserWordRequest, db: Session = Depends(get_db)):
-    """Remove a list of words from the user_added_words table."""
+    """Remove multiple words from user_added_words table."""
     removed_words = []
     not_found_words = []
 
     for word in request.words:
-        word_entry = db.query(UserAddedWord).filter(UserAddedWord.word == word).first()
-        if not word_entry:
-            not_found_words.append(word)  # Collect not found words for response
-        else:
-            db.delete(word_entry)
+        entry = db.query(UserAddedWord).filter(UserAddedWord.word == word).first()
+        if entry:
+            db.delete(entry)
             removed_words.append(word)
+        else:
+            not_found_words.append(word)
 
-    db.commit()  # Commit once after processing all deletions
+    db.commit()
 
-    # Prepare response message
-    response_message = {
+    return {
         "message": f"Successfully removed {len(removed_words)} words.",
         "removed": removed_words,
         "unable_to_remove": not_found_words
     }
 
-    return response_message  # Return a detailed response
 
-
-@router.post('/filter-wrongwords')
+@router.post("/filter-wrongwords")
 async def filter_wrong_words(request: CheckWrongWordsFromList):
-    """Filter wrong words from the given list."""
+    """Identify wrong words from provided list."""
     try:
-        # Pass the list of words to the filtering function
-        filter_words = await filter_missing_words_from_list(words=request.wordlist)
-        if filter_words:
-            return filter_words
-        else:
-            return []  # Return an empty list if no wrong words are found
-
+        result = await filter_missing_words_from_list(words=request.wordlist)
+        return result or []
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing data: {str(e)}"
+        )
