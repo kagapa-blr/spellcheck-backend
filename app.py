@@ -19,7 +19,7 @@ from starlette.responses import HTMLResponse, RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
-from config.database import Base, engine
+from config.database import engine
 from config.logger_config import setup_logger
 from routers import (
     user,
@@ -33,6 +33,7 @@ from security.app_security import add_security_middleware
 from security.auth import admin_auth_required, create_default_admin
 from symspell.sym_spell import symspell_initialization
 from utilities.read_file_content import filter_words_from_file, count_word_frequency
+from sqlalchemy import inspect
 
 # -----------------------------
 # Logger
@@ -47,9 +48,10 @@ logger.info("Application initializing...")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        # Ensure DB tables exist
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created/verified.")
+        # Safety check: ensure migrations already ran
+        inspector = inspect(engine)
+        if not inspector.get_table_names():
+            raise RuntimeError("Database has no tables. Run Alembic migrations first.")
 
         # Initialize BLOOM
         await bloom_initialization()
@@ -59,7 +61,7 @@ async def lifespan(app: FastAPI):
         symspell_initialization()
         logger.info("SymSpell initialized.")
 
-        # Create default admin if not exists
+        # Create default admin if not exists (tables must exist)
         await create_default_admin()
         logger.info("Default admin ensured.")
 
@@ -156,7 +158,6 @@ async def validate_admin():
 
 @app.post("/upload/", response_model=dict)
 async def upload_file(file: UploadFile = File(...)):
-    """Upload a text or DOCX file and extract words."""
     try:
         words = await filter_words_from_file(file)
         logger.info(f"File uploaded: {file.filename}, extracted {len(words)} words.")
@@ -168,7 +169,6 @@ async def upload_file(file: UploadFile = File(...)):
 
 @app.post("/word-frequency/data", dependencies=[Depends(admin_auth_required)], response_model=dict)
 async def word_frequency(file: UploadFile = File(...)):
-    """Upload a file and compute word frequencies."""
     try:
         freq_data = await count_word_frequency(file)
         logger.info(f"Word frequency computed for file: {file.filename}")
@@ -193,5 +193,4 @@ async def custom_404_handler(request: Request, exc):
 # Run
 # -----------------------------
 if __name__ == "__main__":
-    # uvicorn.run("app:app", host="0.0.0.0", port=8443, reload=True)
-    print("Running app with uvicorn...")
+    uvicorn.run("app:app", host="0.0.0.0", port=8443, reload=False)

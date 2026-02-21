@@ -1,5 +1,4 @@
 import os
-import subprocess
 import sys
 
 from dotenv import load_dotenv
@@ -10,7 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError
 load_dotenv()
 
 # Constants for database configuration
-ALEMBIC_DIR = 'alembic'
 DB_USERNAME = os.getenv("DB_USERNAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
@@ -23,95 +21,96 @@ SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST
 
 
 def execute_sql_command(engine, command):
-    """Executes a given SQL command."""
     with engine.connect() as connection:
         connection.execute(text(command))
 
 
-def reset_database():
-    """Reset the database by dropping and recreating it, then creating all tables."""
+def fetch_tables():
+    """Fetch all tables from the current database."""
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    with engine.connect() as conn:
+        result = conn.execute(text("SHOW TABLES"))
+        return [row[0] for row in result.fetchall()]
+
+
+def reset_full_database():
     try:
+        confirm = input(f"This will DROP and RECREATE the database '{DB_NAME}'. Type YES to continue: ")
+        if confirm != "YES":
+            print("Operation cancelled.")
+            return
+
         engine = create_engine(DATABASE_URL_WITHOUT_DB)
 
-        # Drop the existing database if it exists
         execute_sql_command(engine, f"DROP DATABASE IF EXISTS {DB_NAME};")
         print(f"Database '{DB_NAME}' dropped successfully.")
 
-        # Create the database again
-        execute_sql_command(engine, f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+        execute_sql_command(
+            engine,
+            f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        )
         print(f"Database '{DB_NAME}' created successfully.")
 
     except SQLAlchemyError as e:
-        print(f"SQLAlchemyError in reset_database: {e}")
-    except Exception as e:
-        print(f"Error in reset_database: {e}")
+        print(f"SQLAlchemyError in reset_full_database: {e}")
 
 
-def drop_database():
-    """Drop the existing database."""
+def reset_selected_tables():
     try:
+        tables = fetch_tables()
+
+        if not tables:
+            print("No tables found in database.")
+            return
+
+        print("\nAvailable Tables:")
+        for i, table in enumerate(tables, start=1):
+            print(f"{i}) {table}")
+
+        selected = input("\nEnter table numbers to reset (comma separated, e.g. 1,3,5): ").strip()
+
+        indexes = [int(x.strip()) - 1 for x in selected.split(",") if x.strip().isdigit()]
+        selected_tables = [tables[i] for i in indexes if 0 <= i < len(tables)]
+
+        if not selected_tables:
+            print("No valid tables selected.")
+            return
+
+        print("\nSelected tables:")
+        for t in selected_tables:
+            print(f" - {t}")
+
+        confirm = input("\n This will DROP selected tables. Type YES to continue: ")
+        if confirm.lower() != "yes" or confirm.lower()=='y':
+            print("Operation cancelled.")
+            return
+
         engine = create_engine(SQLALCHEMY_DATABASE_URL)
-        execute_sql_command(engine, f"DROP DATABASE IF EXISTS {DB_NAME}")
-        print(f"Database '{DB_NAME}' dropped successfully.")
+        for table in selected_tables:
+            execute_sql_command(engine, f"DROP TABLE IF EXISTS `{table}`;")
+            print(f"Table '{table}' dropped successfully.")
+
+        print("\n✅ Done. Recreate tables using Alembic or app startup.")
+
     except SQLAlchemyError as e:
-        print(f"SQLAlchemyError in drop_database: {e}")
+        print(f"SQLAlchemyError in reset_selected_tables: {e}")
     except Exception as e:
-        print(f"Error dropping database: {e}")
-
-
-def initialize_alembic():
-    """Initialize Alembic if it is not already initialized."""
-    if not os.path.exists(ALEMBIC_DIR):
-        print("Alembic not initialized. Initializing Alembic...")
-        result = subprocess.run(["alembic", "init", ALEMBIC_DIR])
-        if result.returncode == 0:
-            print("Alembic initialized successfully.")
-        else:
-            print("Failed to initialize Alembic.")
-    else:
-        print("Alembic already initialized.")
-
-
-def migrate_database():
-    """Create a new Alembic revision and run the database migration."""
-    initialize_alembic()
-
-    # Create a new Alembic revision with a descriptive message
-    revision_message = "create account table"
-    result = subprocess.run(["alembic", "revision", "-m", revision_message], capture_output=True, text=True)
-
-    if result.returncode != 0:
-        print(f"Error creating Alembic revision: {result.stderr}")
-        return
-    print(f"Alembic revision created successfully: {result.stdout}")
-
-    # Run the database migration (upgrade to the latest version)
-    print("Starting database migration...")
-    result = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
-
-    if result.returncode != 0:
-        print(f"Error during migration: {result.stderr}")
-        return
-
-    print(f"Database migration completed successfully:{result.stdout.title()}")
+        print(f"Error in reset_selected_tables: {e}")
 
 
 def main():
-    """Main function to run database management tasks."""
-    print("Please select an option:")
-    print("1) Reset Database")
-    print("2) DB Migrate")
+    print("\nDatabase Reset Utility")
+    print("1) Reset FULL Database (Drop & Recreate DB)")
+    print("2) Reset Specific Tables (Select from list)")
 
-    choice = input("Enter your choice: ")
+    choice = input("\nEnter your choice: ").strip()
 
     if choice == "1":
-        print("Resetting the database...")
-        reset_database()
+        reset_full_database()
     elif choice == "2":
-        print("Running migrations...")
-        migrate_database()
+        reset_selected_tables()
     else:
-        print("Invalid option selected. Exiting.")
+        print("Invalid option selected.")
         sys.exit(1)
 
 

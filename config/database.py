@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
@@ -13,58 +13,39 @@ DB_USERNAME = os.getenv("DB_USERNAME")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_HOST = os.getenv("DB_HOST")
 DB_NAME = os.getenv("DB_NAME")
-DB_PORT = os.getenv("DB_PORT", "3306")  # Default to 3306 if not set
+DB_PORT = os.getenv("DB_PORT", "3306")
 
-# Define MySQL connection without specifying the database
-DATABASE_URL_WITHOUT_DB = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"
+if not all([DB_USERNAME, DB_PASSWORD, DB_HOST, DB_NAME]):
+    raise RuntimeError("Missing DB credentials in .env")
 
 # Target MySQL database URL
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+SQLALCHEMY_DATABASE_URL = (
+    f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
-# Create a connection to MySQL without the database to check and create it
-def create_database_if_not_exists():
-    try:
-        # Create engine to connect without the specific database
-        engine = create_engine(DATABASE_URL_WITHOUT_DB)
-        with engine.connect() as conn:
-            # Check if the database exists
-            result = conn.execute(text(f"SHOW DATABASES LIKE '{DB_NAME}'"))
-            database_exists = result.scalar()
-
-            if not database_exists:
-                # If database doesn't exist, create it with utf8mb4 and unicode collation
-                conn.execute(text(f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-                print(f"Database '{DB_NAME}' created with utf8mb4_unicode_ci collation.")
-            else:
-                print(f"Database '{DB_NAME}' already exists.")
-    except OperationalError as e:
-        print(f"Error connecting to the database server: {str(e)}")
-    except SQLAlchemyError as e:
-        print(f"Error while checking/creating the database: {str(e)}")
-
-# Call the function to ensure the database exists
-create_database_if_not_exists()
-
-# Now create the main engine for the actual database connection
+# Create engine (NO schema changes here)
 try:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        future=True,
+    )
 except OperationalError as e:
-    print(f"Error connecting to the database '{DB_NAME}': {str(e)}")
+    raise RuntimeError(f"Error connecting to database '{DB_NAME}': {e}")
 except SQLAlchemyError as e:
-    print(f"Error with SQLAlchemy setup: {str(e)}")
+    raise RuntimeError(f"SQLAlchemy engine error: {e}")
 
-# Create a session maker
+# Create session maker
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for declarative models
+# Base class for models
 Base = declarative_base()
 
-# Dependency to get the database session
+# Dependency to get DB session
 def get_db():
     db = SessionLocal()
     try:
         yield db
-    except SQLAlchemyError as e:
-        print(f"Database session error: {str(e)}")
     finally:
         db.close()

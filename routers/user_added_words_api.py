@@ -1,14 +1,13 @@
-from typing import Optional, List
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from config.database import get_db
 from dbmodels.models import UserAddedWord
 from security.auth import get_current_user
-from utilities.read_file_content import filter_missing_words_from_list, clean_single_word
+from utilities.read_file_content import filter_missing_words_from_list
 
 router = APIRouter()
 
@@ -19,6 +18,10 @@ class UserAddedWordResponse(BaseModel):
     id: int
     word: str
     frequency: int
+
+
+class AddUserWordsBulkRequest(BaseModel):
+    words: List[str]
 
 
 class AddUserWordRequest(BaseModel):
@@ -46,50 +49,90 @@ def get_user_added_word_stats(db: Session = Depends(get_db)):
     return db.query(UserAddedWord).count()
 
 
-@router.get(
-    "/user-added-words/",
-    response_model=List[UserAddedWordResponse],
-    dependencies=[Depends(get_current_user)]
-)
-def get_all_user_added_words(db: Session = Depends(get_db)):
-    """Return all user-added words. Returns [] if none exist."""
-    return db.query(UserAddedWord).all() or []
+from sqlalchemy import func
 
 
 @router.post(
-    "/user-added-words/",
-    response_model=UserAddedWordResponse
+    "/user-added-words/add",
+    response_model=dict,
+    dependencies=[Depends(get_current_user)]
 )
-def add_user_added_word(request: AddUserWordRequest, db: Session = Depends(get_db)):
-    """Add or update a user-added word."""
-    given_word = clean_single_word(request.word)
+def add_or_increment_user_added_words(
+    request: AddUserWordsBulkRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Accepts only list of words from frontend.
+    If word exists -> increment frequency by 1
+    If not -> insert with frequency = 1
+    """
 
-    existing_word = db.query(UserAddedWord).filter(
-        UserAddedWord.word == given_word
-    ).first()
+    added = []
+    updated = []
 
-    if existing_word:
-        existing_word.frequency += 1
-        db.commit()
-        db.refresh(existing_word)
-        return existing_word
+    # Deduplicate + sanitize
+    unique_words = {w.strip() for w in request.words if w and w.strip()}
 
-    new_word = UserAddedWord(
-        word=given_word,
-        frequency=request.frequency or 1
-    )
-
-    try:
-        db.add(new_word)
-        db.commit()
-        db.refresh(new_word)
-        return new_word
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="Failed to add word. The added_by_username must exist in the users table."
+    for word in unique_words:
+        entry = (
+            db.query(UserAddedWord)
+            .filter(func.lower(UserAddedWord.word) == word.lower())
+            .first()
         )
+
+        if entry:
+            entry.frequency += 1
+            updated.append(entry.word)
+        else:
+            new_entry = UserAddedWord(word=word, frequency=1)
+            db.add(new_entry)
+            added.append(word)
+
+    db.commit()
+
+    return {
+        "message": "User added words processed successfully",
+        "added_count": len(added),
+        "updated_count": len(updated),
+        "added_words": added,
+        "updated_words": updated,
+    }
+
+# @router.get(
+#     "/user-added-words/",
+#     response_model=List[UserAddedWordResponse],
+#     dependencies=[Depends(get_current_user)]
+# )
+# def get_all_user_added_words(db: Session = Depends(get_db)):
+#     """Return all user-added words. Returns [] if none exist."""
+#     return db.query(UserAddedWord).all() or []
+
+
+from typing import Optional
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+
+@router.get("/user-added-words/")
+def get_user_added_words(
+        limit: int = 10,
+        offset: int = 0,
+        search: str | None = None,
+        db: Session = Depends(get_db),
+):
+    query = db.query(UserAddedWord)
+
+    if search:
+        query = query.filter(UserAddedWord.word.ilike(f"%{search}%"))
+
+    total = query.count()
+
+    data = query.order_by(UserAddedWord.id.desc()).offset(offset).limit(limit).all()
+
+    return {
+        "data": data,
+        "total": total
+    }
 
 
 @router.delete(
