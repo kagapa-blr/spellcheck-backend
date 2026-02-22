@@ -2,5 +2,5 @@
 logs
 *.iml
 __pycache__
-alembic
 *.pyc
+alembic/versions
