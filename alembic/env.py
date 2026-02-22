@@ -13,8 +13,8 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
 # IMPORTANT: import all models so Alembic can see the tables
-from dbmodels.models import User, MainDictionary, UserAddedWord, Suggestion
-
+#from dbmodels.models import User, MainDictionary, UserAddedWord, Suggestion
+from dbmodels.models import *
 # Alembic Config object
 config = context.config
 
@@ -29,7 +29,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # --- DEBUG: print all tables Alembic sees ---
-print("Tables detected for migration:")
+print("=========Tables detected for migration===================")
 for table_name in target_metadata.tables.keys():
     print(f" - {table_name}")
 print("------------------------------------------------\n")
