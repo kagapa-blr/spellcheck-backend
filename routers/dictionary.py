@@ -1,6 +1,6 @@
 from collections import Counter
 from typing import Optional, List
-
+from sqlalchemy.dialects.mysql import insert
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -51,11 +51,12 @@ def check_word(request: WordRequest, db: Session = Depends(get_db)):
     )
 
 
+
 @router.post("/add-words/", response_model=AddWordResponse)
 def add_or_increment_words(
-        request: WordRequest,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+    request: WordRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     if not request.words:
         raise HTTPException(status_code=400, detail="No words provided")
@@ -66,31 +67,26 @@ def add_or_increment_words(
         if entry.word and entry.word.strip()
     ]
 
-    words_lower = [w.lower() for w, _ in cleaned_entries]
-
-    existing_entries = db.query(MainDictionary).filter(
-        func.lower(MainDictionary.word).in_(words_lower)
-    ).all()
-
-    existing_map = {e.word.lower(): e for e in existing_entries}
-
     added_words = []
     updated_words = []
 
     for word, freq in cleaned_entries:
-        freq = max(freq, 1)
-        key = word.lower()
+        stmt = insert(MainDictionary).values(
+            word=word,
+            frequency=freq,
+            added_by_username=request.added_by_username or current_user.username
+        ).on_duplicate_key_update(
+            frequency=MainDictionary.frequency + freq
+        )
 
-        if key in existing_map:
-            existing_map[key].frequency += freq
-            updated_words.append(word)
-        else:
-            db.add(MainDictionary(
-                word=word,
-                frequency=freq,
-                added_by_username=request.added_by_username or current_user.username
-            ))
+        result = db.execute(stmt)
+        db.flush()  # ensure result is applied immediately
+
+        # Check if row was inserted or updated
+        if result.lastrowid:
             added_words.append(word)
+        else:
+            updated_words.append(word)
 
     db.commit()
 
@@ -101,7 +97,6 @@ def add_or_increment_words(
         added_words=added_words,
         updated_words=updated_words
     )
-
 
 @router.put("/update-word/", response_model=AddWordResponse, dependencies=[Depends(get_current_user)])
 def update_word(request: WordRequest, db: Session = Depends(get_db)):

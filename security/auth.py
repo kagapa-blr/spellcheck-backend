@@ -34,7 +34,7 @@ default_admin_password = os.getenv("ADMIN_PASSWORD")
 ISSUER = os.getenv("TOKEN_ISSUER", "ekannada-app")
 AUDIENCE = os.getenv("TOKEN_AUDIENCE", "ekannada-users")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/kaagunitha/user/api/v1/generate/token")
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"],deprecated="auto")
 
 logger = setup_logger(__name__)
 # ----------------------------
