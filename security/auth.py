@@ -5,10 +5,12 @@ Description: Ekannada Spellcheck Application authorization usage
 Date: 25-11-2025
 """
 
+from __future__ import annotations
+
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -57,7 +59,7 @@ def get_password_hash(password: str) -> str:
 def create_access_token(
         subject: str,
         expires_delta: Optional[timedelta] = None,
-        extra_claims: Optional[Dict[str, Any]] = None
+        extra_claims: Optional[dict[str, Any]] = None
 ) -> str:
     """
     Create a secure JWT access token with standard claims.

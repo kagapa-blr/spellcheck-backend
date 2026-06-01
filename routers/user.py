@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Optional
 
 import pytz
 from dotenv import load_dotenv
@@ -46,7 +48,7 @@ class UserUpdateRequest(BaseModel):
 
 
 class UsernameListResponse(BaseModel):
-    usernames: List[str]
+    usernames: list[str]
 
 
 class UserSignupResponse(BaseModel):
@@ -280,7 +282,7 @@ def check_user_exists(
     return UserExistenceResponse(username=username, exists=exists)
 
 
-@router.get("/info", response_model=List[UserInfoResponse])
+@router.get("/info", response_model=list[UserInfoResponse])
 def get_all_user_info(
         db: Session = Depends(get_db),
         current_user: User = Depends(get_current_user),

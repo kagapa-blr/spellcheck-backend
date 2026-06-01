@@ -1,4 +1,6 @@
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import Optional
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,7 +26,7 @@ class UserAddedWordResponse(BaseModel):
 
 
 class AddUserWordsBulkRequest(BaseModel):
-    words: List[str]
+    words: list[str]
 
 
 class AddUserWordRequest(BaseModel):
@@ -33,11 +35,11 @@ class AddUserWordRequest(BaseModel):
 
 
 class CheckWrongWordsFromList(BaseModel):
-    wordlist: List[str]
+    wordlist: list[str]
 
 
 class RemoveUserWordRequest(BaseModel):
-    words: List[str]
+    words: list[str]
 
 
 # ---------------------- Routes ---------------------- #
@@ -139,7 +141,6 @@ def add_or_increment_user_added_words(
 #     return db.query(UserAddedWord).all() or []
 
 
-from typing import Optional
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
@@ -148,7 +149,7 @@ from sqlalchemy.orm import Session
 def get_user_added_words(
         limit: int = 10,
         offset: int = 0,
-        search: str | None = None,
+        search: Optional[str] = None,
         db: Session = Depends(get_db),
 ):
     """Get list of user added words with pagination and search."""

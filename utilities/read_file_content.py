@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from collections import Counter
-from typing import List
 from io import BytesIO
 import logging
 
@@ -18,7 +19,7 @@ special_characters = r"""೧^l=F–೬B#yJwfz•+2umE<'!CxULvr]8o೦VNd0hH'_>)- 
 translation_table = str.maketrans('', '', special_characters)
 
 
-async def extract_words_from_txt(file: UploadFile) -> List[str]:
+async def extract_words_from_txt(file: UploadFile) -> list[str]:
     """
     Extracts words from a .txt file.
 
@@ -61,7 +62,7 @@ async def extract_words_from_txt(file: UploadFile) -> List[str]:
         raise HTTPException(status_code=400, detail=f"Error processing TXT file: {str(e)}")
 
 
-def clean_words(words: List[str]) -> List[str]:
+def clean_words(words: list[str]) -> list[str]:
     """
     Cleans the list of words by removing any characters found in the string `p`.
 
@@ -94,7 +95,7 @@ def clean_single_word(word: str) -> str:
     return cleaned_word.strip()  # Optionally convert to lowercase if needed
 
 
-async def extract_words_from_docx(file: UploadFile) -> List[str]:
+async def extract_words_from_docx(file: UploadFile) -> list[str]:
     """
     Extracts words from a .docx file.
 
@@ -146,7 +147,7 @@ async def extract_words_from_docx(file: UploadFile) -> List[str]:
         )
 
 
-async def extract_words(file: UploadFile) -> List[str]:
+async def extract_words(file: UploadFile) -> list[str]:
     """
     Extracts words from either a .txt or .docx file.
 
@@ -177,7 +178,7 @@ async def extract_words(file: UploadFile) -> List[str]:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
-async def filter_words_from_file(file: UploadFile) -> List[str]:
+async def filter_words_from_file(file: UploadFile) -> list[str]:
     """
     Extracts words from the uploaded file and filters out the words already present in the Bloom filter.
 
@@ -215,7 +216,7 @@ async def filter_words_from_file(file: UploadFile) -> List[str]:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
-async def filter_missing_words_from_list(words: List[str]) -> List[str]:
+async def filter_missing_words_from_list(words: list[str]) -> list[str]:
     """
     Filters a list of words to remove those that are already present in a Bloom filter.
 

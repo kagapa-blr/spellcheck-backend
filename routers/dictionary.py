@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from collections import Counter
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.dialects.mysql import insert
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from pydantic import BaseModel
@@ -24,7 +26,7 @@ class WordEntry(BaseModel):
 
 
 class WordRequest(BaseModel):
-    words: List[WordEntry]
+    words: list[WordEntry]
     added_by_username: Optional[str] = None
 
 
@@ -32,8 +34,8 @@ class AddWordResponse(BaseModel):
     message: str
     added_count: int = 0
     updated_count: int = 0
-    added_words: List[str] = []
-    updated_words: List[str] = []
+    added_words: list[str] = []
+    updated_words: list[str] = []
 
 
 # ---------------------- APIs ---------------------- #
