@@ -1,9 +1,9 @@
-name: Build and Release Package
+name: Build Package
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -22,8 +22,7 @@ jobs:
           python-version: "3.12"
 
       - name: Create Virtual Environment
-        run: |
-          python -m venv venv
+        run: python -m venv venv
 
       - name: Install Dependencies
         run: |
@@ -31,11 +30,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Package Application
+      - name: Create Release Package
         run: |
           mkdir release
 
-          # Copy project files
           rsync -av \
             --exclude='.git' \
             --exclude='.github' \
@@ -44,14 +42,10 @@ jobs:
             --exclude='logs' \
             ./ release/
 
-          # Include installed dependencies
-          cp -r venv release/
+          zip -r spellcheck-backend.zip release
 
-          # Create zip archive
-          zip -r spellcheck-backend-${{ github.event.release.tag_name }}.zip release
-
-      - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            spellcheck-backend-${{ github.event.release.tag_name }}.zip
+          name: spellcheck-backend
+          path: spellcheck-backend.zip
