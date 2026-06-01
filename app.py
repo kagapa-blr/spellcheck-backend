@@ -15,9 +15,8 @@ from fastapi.openapi.docs import (
     get_swagger_ui_oauth2_redirect_html,
     get_redoc_html,
 )
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, FileResponse
 from starlette.staticfiles import StaticFiles
-from starlette.templating import Jinja2Templates
 
 from config.database import engine
 from config.logger_config import setup_logger
@@ -31,7 +30,7 @@ from routers import (
 from routers.bloom_api import bloom_initialization, bloom_reinitialization
 from security.app_security import add_security_middleware
 from security.auth import admin_auth_required, create_default_admin
-from symspell.sym_spell import symspell_initialization
+from symspell.sym_spell import symspell_initialization, symspell_reinitialization
 from utilities.read_file_content import filter_words_from_file, count_word_frequency
 from sqlalchemy import inspect
 
@@ -126,12 +125,11 @@ app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=["SymSpe
 app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=["User Added"])
 
 # -----------------------------
-# Static & Template Setup
+# Static Setup
 # -----------------------------
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-
-templates = Jinja2Templates(directory="templates")
+app.mount("/images", StaticFiles(directory="static/images"), name="images")
 
 
 # -----------------------------
@@ -139,15 +137,43 @@ templates = Jinja2Templates(directory="templates")
 # -----------------------------
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        return FileResponse("templates/index.html")
+    except FileNotFoundError:
+        logger.error("index.html not found in templates directory")
+        return HTMLResponse(
+            "<h1>Kannada Spellcheck Application</h1><p>Frontend not loaded. Please check your installation.</p>",
+            status_code=200
+        )
 
 
 @app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
 async def reload_bloom_symspell():
-    logger.info("Admin triggered BLOOM and SymSpell reload.")
-    await bloom_reinitialization()
-    symspell_initialization()
-    return {"message": "BLOOM and SymSpell reinitialized successfully"}
+    """Admin endpoint to reload both Bloom filter and SymSpell dictionary.
+    
+    This is the ONLY endpoint that should be called to reload the spellcheck engines.
+    Do NOT call reload on every word check or suggestion request - use only when
+    the dictionary is updated to improve performance.
+    """
+    try:
+        logger.info("========== ADMIN RELOAD STARTED ==========")
+        logger.info("Reloading Bloom filter...")
+        await bloom_reinitialization()
+        
+        logger.info("Reloading SymSpell dictionary...")
+        symspell_reinitialization()
+        
+        logger.info("========== ADMIN RELOAD COMPLETED ==========")
+        return {
+            "message": "BLOOM and SymSpell reinitialized successfully",
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error during admin reload: {str(e)}", exc_info=True)
+        return {
+            "message": f"Error reloading: {str(e)}",
+            "status": "error"
+        }
 
 
 @app.get("/admin/validate", dependencies=[Depends(admin_auth_required)])
