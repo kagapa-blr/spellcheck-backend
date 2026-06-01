@@ -1,0 +1,57 @@
+name: Build and Release Package
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create Virtual Environment
+        run: |
+          python -m venv venv
+
+      - name: Install Dependencies
+        run: |
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Package Application
+        run: |
+          mkdir release
+
+          # Copy project files
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='logs' \
+            ./ release/
+
+          # Include installed dependencies
+          cp -r venv release/
+
+          # Create zip archive
+          zip -r spellcheck-backend-${{ github.event.release.tag_name }}.zip release
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            spellcheck-backend-${{ github.event.release.tag_name }}.zip
