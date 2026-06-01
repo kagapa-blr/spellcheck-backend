@@ -6,6 +6,8 @@ Description  : Kannada language spellchecking backend using FastAPI. Supports
                file uploads, SymSpell/BLOOM integration, and user management.
 """
 
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
 
 import uvicorn

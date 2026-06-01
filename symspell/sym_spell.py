@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from symspellpy import SymSpell

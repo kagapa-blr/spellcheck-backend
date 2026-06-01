@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pybloom_live import BloomFilter
 from sqlalchemy.orm import Session
 

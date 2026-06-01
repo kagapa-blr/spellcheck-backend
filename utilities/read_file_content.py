@@ -236,7 +236,7 @@ async def filter_missing_words_from_list(words: list[str]) -> list[str]:
     return missing_words
 
 
-async def count_word_frequency(file: UploadFile) -> dict:
+async def count_word_frequency(file: UploadFile) -> dict[str, int]:
     """
     Counts the frequency of each word in the uploaded .txt or .docx file.
 
@@ -244,7 +244,7 @@ async def count_word_frequency(file: UploadFile) -> dict:
         file (UploadFile): The uploaded file.
 
     Returns:
-        dict: A dictionary where keys are words and values are their frequencies.
+        dict[str, int]: A dictionary where keys are words and values are their frequencies.
     """
     try:
         # Extract words based on file type
