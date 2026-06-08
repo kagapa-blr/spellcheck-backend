@@ -14,3 +14,6 @@ pymysql
 passlib[bcrypt]
 passlib[argon2]
 cryptography
+pytest 
+pytest-asyncio 
+httpx

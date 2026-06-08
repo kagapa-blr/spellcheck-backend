@@ -18,8 +18,12 @@ DB_NAME = os.getenv("DB_NAME")
 DB_PORT = os.getenv("DB_PORT", "3306")  # Default to 3306 if not set
 
 # Define MySQL connection strings
-DATABASE_URL_WITHOUT_DB = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DATABASE_URL_WITHOUT_DB = (
+    f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}"
+)
+SQLALCHEMY_DATABASE_URL = (
+    f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 
 def execute_sql_command(engine, command):
@@ -37,8 +41,10 @@ def fetch_tables():
 
 def reset_full_database():
     try:
-        confirm = input(f"This will DROP and RECREATE the database '{DB_NAME}'. Type YES to continue: ")
-        if confirm != "YES":
+        confirm = input(
+            f"This will DROP and RECREATE the database '{DB_NAME}'. Type YES to continue: "
+        )
+        if confirm.lower() != "yes":
             print("Operation cancelled.")
             return
 
@@ -49,9 +55,12 @@ def reset_full_database():
 
         execute_sql_command(
             engine,
-            f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+            f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
         )
         print(f"Database '{DB_NAME}' created successfully.")
+        print("\nDone. Recreate tables using Alembic or app startup.")
+
+        clear_alembic_versions()
 
     except SQLAlchemyError as e:
         print(f"SQLAlchemyError in reset_full_database: {e}")
@@ -69,9 +78,13 @@ def reset_selected_tables():
         for i, table in enumerate(tables, start=1):
             print(f"{i}) {table}")
 
-        selected = input("\nEnter table numbers to reset (comma separated, e.g. 1,3,5): ").strip()
+        selected = input(
+            "\nEnter table numbers to reset (comma separated, e.g. 1,3,5): "
+        ).strip()
 
-        indexes = [int(x.strip()) - 1 for x in selected.split(",") if x.strip().isdigit()]
+        indexes = [
+            int(x.strip()) - 1 for x in selected.split(",") if x.strip().isdigit()
+        ]
         selected_tables = [tables[i] for i in indexes if 0 <= i < len(tables)]
 
         if not selected_tables:
@@ -83,7 +96,7 @@ def reset_selected_tables():
             print(f" - {t}")
 
         confirm = input("\n This will DROP selected tables. Type YES to continue: ")
-        if confirm.lower() != "yes" or confirm.lower()=='y':
+        if confirm.lower() != "yes" or confirm.lower() == "y":
             print("Operation cancelled.")
             return
 
@@ -93,11 +106,36 @@ def reset_selected_tables():
             print(f"Table '{table}' dropped successfully.")
 
         print("\n✅ Done. Recreate tables using Alembic or app startup.")
+        clear_alembic_versions()
 
     except SQLAlchemyError as e:
         print(f"SQLAlchemyError in reset_selected_tables: {e}")
     except Exception as e:
         print(f"Error in reset_selected_tables: {e}")
+
+
+import shutil
+from pathlib import Path
+
+
+def clear_alembic_versions():
+    try:
+        versions_dir = Path("alembic/versions")
+
+        if not versions_dir.exists():
+            print("Alembic versions directory not found.")
+            return
+
+        for item in versions_dir.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+
+        print("Alembic versions cleared successfully.")
+
+    except Exception as e:
+        print(f"Error clearing alembic versions: {e}")
 
 
 def main():
@@ -109,6 +147,7 @@ def main():
 
     if choice == "1":
         reset_full_database()
+
     elif choice == "2":
         reset_selected_tables()
     else:

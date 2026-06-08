@@ -1,224 +1,217 @@
-"""
-Author       : Ravikumar Pawar
-Email        : ravi.ravipawar17@gmail.com
-Application  : Kannada Spellcheck Application
-Description  : Kannada language spellchecking backend using FastAPI. Supports
-               file uploads, SymSpell/BLOOM integration, and user management.
-"""
-
 from __future__ import annotations
 
+import asyncio
+import os
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import Depends, FastAPI, Request, File, UploadFile, HTTPException
-from fastapi.openapi.docs import (
-    get_swagger_ui_html,
-    get_swagger_ui_oauth2_redirect_html,
-    get_redoc_html,
-)
-from starlette.responses import HTMLResponse, RedirectResponse, FileResponse
-from starlette.staticfiles import StaticFiles
-
-from config.database import engine
-from config.logger_config import setup_logger
-from routers import (
-    user,
-    dictionary,
-    bloom_api,
-    symspell_api,
-    user_added_words_api,
-)
-from routers.bloom_api import bloom_initialization, bloom_reinitialization
-from security.app_security import add_security_middleware
-from security.auth import admin_auth_required, create_default_admin
-from symspell.sym_spell import symspell_initialization, symspell_reinitialization
-from utilities.read_file_content import filter_words_from_file, count_word_frequency
+from fastapi import FastAPI, Request
 from sqlalchemy import inspect
+from starlette.responses import HTMLResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
 
-# -----------------------------
+from app.config.database import init_engine, get_engine
+from app.config.logger_config import setup_logger
+from app.routes.api_routes.bloom_filter_routes import (
+    bloom_initialization,
+    bloom_router,
+)
+from app.routes.api_routes.dictionary_routes import dictionary_router
+from app.routes.api_routes.symspell_routes import symspell_router
+from app.routes.web_routes.error_routes import setup_error_handlers
+from app.routes.web_routes.swagger_routes import setup_swagger_routes
+from app.services.security_service.app_security import add_security_middleware
+from app.services.security_service.auth import create_default_admin
+from routes.api_routes.manage_admins import manage_admin_router
+from services.symspell_service.symspell_service import symspell_initialization
+
+# --------------------------------------------------
+# Paths
+# --------------------------------------------------
+
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+APP_DIR = os.path.join(ROOT_DIR, "app")
+
+STATIC_DIR = os.path.join(APP_DIR, "static")
+ASSETS_DIR = os.path.join(STATIC_DIR, "assets")
+IMAGES_DIR = os.path.join(STATIC_DIR, "images")
+TEMPLATES_DIR = os.path.join(APP_DIR, "templates")
+
+# --------------------------------------------------
 # Logger
-# -----------------------------
+# --------------------------------------------------
+
 logger = setup_logger(__name__)
-logger.info("Application initializing...")
 
 
-# -----------------------------
-# FastAPI Lifespan
-# -----------------------------
+# --------------------------------------------------
+# Lifespan
+# --------------------------------------------------
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        # Safety check: ensure migrations already ran
-        inspector = inspect(engine)
+        # Initialize DB engine and sessionmaker before using DB
+        init_engine()
+        inspector = inspect(get_engine())
+
         if not inspector.get_table_names():
             raise RuntimeError("Database has no tables. Run Alembic migrations first.")
 
-        # Initialize BLOOM
-        await bloom_initialization()
-        logger.info("BLOOM initialized.")
+        # Database engine/session initialized. Schedule heavy background
+        # initializations (BLOOM, SymSpell) to run asynchronously so startup
+        # is not blocked. These will run after DB is ready.
 
-        # Initialize SymSpell
-        symspell_initialization()
-        logger.info("SymSpell initialized.")
+        loop = asyncio.get_event_loop()
 
-        # Create default admin if not exists (tables must exist)
-        await create_default_admin()
-        logger.info("Default admin ensured.")
+        # Run initializations sequentially in a background task so startup isn't blocked.
+        # Delay between stages can be configured via INIT_DELAY_SECONDS env var.
+        try:
+            init_delay = int(os.getenv("INIT_DELAY_SECONDS", "2"))
+        except Exception:
+            init_delay = 2
+
+        loop.create_task(_run_init_sequence(init_delay))
+
+        logger.info("Database engine initialized; scheduled background initializations")
 
         yield
+
     finally:
-        logger.info("Application shutdown complete.")
+        logger.info("Application shutdown complete")
 
 
-# -----------------------------
+async def _safe_run_async(name: str, coro_func):
+    try:
+        await coro_func()
+        logger.info(f"Background init '{name}' completed successfully")
+    except Exception as e:
+        logger.error(f"Background init '{name}' failed: {e}", exc_info=True)
+
+
+async def _safe_run_thread(name: str, func):
+    try:
+        await asyncio.to_thread(func)
+        logger.info(f"Background init '{name}' completed successfully")
+    except Exception as e:
+        logger.error(f"Background init '{name}' failed: {e}", exc_info=True)
+
+
+async def _run_init_sequence(delay_seconds: int = 2):
+    """Run Bloom initialization, wait `delay_seconds`, then run SymSpell init."""
+    try:
+        logger.info(
+            "Starting sequential background initialization: Bloom -> sleep -> SymSpell"
+        )
+
+        # Ensure default admin exists before other inits
+        try:
+            await create_default_admin()
+            logger.info("Default admin creation/verification completed")
+        except Exception as e:
+            logger.error(f"Default admin creation failed: {e}", exc_info=True)
+
+        # Bloom (async)
+        try:
+            await bloom_initialization()
+            logger.info("Bloom initialization completed in sequence")
+        except Exception as e:
+            logger.error(f"Bloom initialization failed in sequence: {e}", exc_info=True)
+
+        # Wait a bit to let resources stabilize
+        if delay_seconds > 0:
+            logger.info(
+                f"Waiting {delay_seconds}s before starting SymSpell initialization"
+            )
+            await asyncio.sleep(delay_seconds)
+
+        # SymSpell (run in thread to avoid blocking)
+        try:
+            await asyncio.to_thread(symspell_initialization)
+            logger.info("SymSpell initialization completed in sequence")
+        except Exception as e:
+            logger.error(
+                f"SymSpell initialization failed in sequence: {e}", exc_info=True
+            )
+
+        logger.info("Sequential background initialization finished")
+    except Exception as e:
+        logger.error(f"Error in initialization sequence: {e}", exc_info=True)
+
+
+# --------------------------------------------------
 # FastAPI App
-# -----------------------------
+# --------------------------------------------------
+
 app = FastAPI(
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
     title="Spellcheck",
     description="Spellcheck application for Kannada language",
-    root_path="/kaagunitha",
 )
 
+# --------------------------------------------------
+# Static Files
+# --------------------------------------------------
 
-# -----------------------------
-# Swagger & ReDoc
-# -----------------------------
-@app.get("/swagger", include_in_schema=False, dependencies=[Depends(admin_auth_required)])
-async def custom_swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url=app.openapi_url,
-        title=f"{app.title} - Swagger UI",
-        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-        swagger_js_url="/kaagunitha/static/js/swagger-ui-bundle.js",
-        swagger_css_url="/kaagunitha/static/css/swagger-ui.css",
-    )
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
+app.mount("/images", StaticFiles(directory=IMAGES_DIR), name="images")
 
+# --------------------------------------------------
+# Templates
+# --------------------------------------------------
 
-@app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
-async def swagger_ui_redirect():
-    return get_swagger_ui_oauth2_redirect_html()
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-
-@app.get("/redoc", include_in_schema=False)
-async def redoc_html():
-    return get_redoc_html(
-        openapi_url=app.openapi_url,
-        title=f"{app.title} - ReDoc",
-        redoc_js_url="/kaagunitha/static/js/swagger-ui-bundle.js",
-    )
-
-
-# -----------------------------
+# --------------------------------------------------
 # Middleware
-# -----------------------------
+# --------------------------------------------------
+
 add_security_middleware(app)
 
-# -----------------------------
+# --------------------------------------------------
+# Error Handlers / Swagger
+# --------------------------------------------------
+
+setup_error_handlers(app)
+setup_swagger_routes(app)
+
+# --------------------------------------------------
 # Routers
-# -----------------------------
-app.include_router(user.router, prefix="/user/api/v1", tags=["User"])
-app.include_router(dictionary.router, prefix="/dictionary/api/v1", tags=["Dictionary"])
-app.include_router(bloom_api.router, prefix="/bloom/api/v1", tags=["BLOOM API"])
-app.include_router(symspell_api.router, prefix="/symspell/api/v1", tags=["SymSpell API"])
-app.include_router(user_added_words_api.router, prefix="/user-added/api/v1", tags=["User Added"])
+# --------------------------------------------------
 
-# -----------------------------
-# Static Setup
-# -----------------------------
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
-app.mount("/images", StaticFiles(directory="static/images"), name="images")
+app.include_router(manage_admin_router, prefix="/admin/api/v1", tags=["ADMINS"])
+app.include_router(dictionary_router, prefix="/dictionary/api/v1", tags=["Dictionary"])
+app.include_router(bloom_router, prefix="/bloom/api/v1", tags=["BLOOM API"])
+app.include_router(symspell_router, prefix="/symspell/api/v1", tags=["SymSpell API"])
 
 
-# -----------------------------
-# Routes
-# -----------------------------
+# --------------------------------------------------
+# Home Page
+# --------------------------------------------------
+
+
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    try:
-        return FileResponse("templates/index.html")
-    except FileNotFoundError:
-        logger.error("index.html not found in templates directory")
-        return HTMLResponse(
-            "<h1>Kannada Spellcheck Application</h1><p>Frontend not loaded. Please check your installation.</p>",
-            status_code=200
-        )
+async def index(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+    )
 
 
-@app.get("/admin/reload", dependencies=[Depends(admin_auth_required)])
-async def reload_bloom_symspell():
-    """Admin endpoint to reload both Bloom filter and SymSpell dictionary.
-    
-    This is the ONLY endpoint that should be called to reload the spellcheck engines.
-    Do NOT call reload on every word check or suggestion request - use only when
-    the dictionary is updated to improve performance.
-    """
-    try:
-        logger.info("========== ADMIN RELOAD STARTED ==========")
-        logger.info("Reloading Bloom filter...")
-        await bloom_reinitialization()
-        
-        logger.info("Reloading SymSpell dictionary...")
-        symspell_reinitialization()
-        
-        logger.info("========== ADMIN RELOAD COMPLETED ==========")
-        return {
-            "message": "BLOOM and SymSpell reinitialized successfully",
-            "status": "success"
-        }
-    except Exception as e:
-        logger.error(f"Error during admin reload: {str(e)}", exc_info=True)
-        return {
-            "message": f"Error reloading: {str(e)}",
-            "status": "error"
-        }
+# --------------------------------------------------
+# Startup
+# --------------------------------------------------
 
-
-@app.get("/admin/validate", dependencies=[Depends(admin_auth_required)])
-async def validate_admin():
-    logger.info("Admin validated successfully.")
-    return {"message": "Admin authentication successful"}
-
-
-@app.post("/upload/", response_model=dict)
-async def upload_file(file: UploadFile = File(...)):
-    try:
-        words = await filter_words_from_file(file)
-        logger.info(f"File uploaded: {file.filename}, extracted {len(words)} words.")
-        return {"wrong_words": words}
-    except Exception as e:
-        logger.exception("Error processing uploaded file.")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-
-
-@app.post("/word-frequency/data", dependencies=[Depends(admin_auth_required)], response_model=dict)
-async def word_frequency(file: UploadFile = File(...)):
-    try:
-        freq_data = await count_word_frequency(file)
-        logger.info(f"Word frequency computed for file: {file.filename}")
-        return freq_data
-    except Exception as e:
-        logger.exception("Error computing word frequency.")
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-
-
-# -----------------------------
-# Custom 404 Handler
-# -----------------------------
-@app.exception_handler(404)
-async def custom_404_handler(request: Request, exc):
-    original_path = request.url.path
-    redirect_url = f"/#/not-found{original_path}"
-    logger.warning(f"404 Not Found: {original_path}")
-    return RedirectResponse(url=redirect_url)
-
-
-# -----------------------------
-# Run
-# -----------------------------
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8443, reload=False)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8443,
+        reload=False,
+    )
