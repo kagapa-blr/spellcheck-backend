@@ -6,7 +6,7 @@ from typing import Generator
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 
 # Load environment variables (safe to call multiple times)
@@ -53,7 +53,9 @@ def init_engine(url: str | None = None, **create_engine_kwargs) -> None:
     defaults.update(create_engine_kwargs)
 
     _engine = create_engine(url, **defaults)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine, future=True)
+    SessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=_engine, future=True
+    )
 
 
 def get_engine() -> Engine:
