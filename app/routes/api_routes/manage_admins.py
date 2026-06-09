@@ -20,13 +20,14 @@ from app.services.security_service.auth import (
     get_password_hash,
     verify_password,
 )
+from schemas.common_response import APIResponse
 from schemas.manage_admins_schema import (
-    UserSignupResponse,
     UserSignupRequest,
     UserLoginResponse,
     UserLoginRequest,
     UserInfoResponse,
     UserUpdateRequest,
+    TokenResponse,
 )
 
 load_dotenv()
@@ -70,14 +71,13 @@ def _issue_token_for_user(user: User) -> str:
 # -------------------------
 
 
-@manage_admin_router.post("/signup", response_model=UserSignupResponse)
+@manage_admin_router.post("/signup", response_model=APIResponse, status_code=201)
 def signup(
     request: UserSignupRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(admin_auth_required),
 ):
     logger.info(f"Signup attempt by admin user: {current_user.username}")
-    # `admin_auth_required` dependency already enforces admin privileges.
 
     if db.query(User).filter(User.username == request.username).first():
         logger.warning(f"Signup failed: username '{request.username}' already exists")
@@ -98,10 +98,11 @@ def signup(
         db.rollback()
         logger.exception("Failed to create new user")
         raise HTTPException(status_code=500, detail="Failed to create user")
-    return UserSignupResponse(message="User created successfully")
+
+    return APIResponse(success=True, message="User created successfully", data=None)
 
 
-@manage_admin_router.post("/login", response_model=UserLoginResponse)
+@manage_admin_router.post("/login", response_model=APIResponse)
 def login_json(request: UserLoginRequest, db: Session = Depends(get_db)):
     logger.info(f"Login attempt for username/email: {request.username}")
 
@@ -198,12 +199,20 @@ def login_json(request: UserLoginRequest, db: Session = Depends(get_db)):
 
     logger.info(f"Login successful for user: {user.username}")
 
-    return UserLoginResponse(access_token=token, token_type="bearer")
+    return APIResponse(
+        success=True,
+        message="Login successful",
+        data=UserLoginResponse(access_token=token, token_type="bearer"),
+    )
 
 
-@manage_admin_router.post("/generate/token", response_model=UserLoginResponse)
+@manage_admin_router.post(
+    "/generate/token",
+    response_model=TokenResponse,
+)
 def generate_token(
-    form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+    form: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
 ):
     logger.info(f"Swagger token request for: {form.username}")
 
@@ -215,15 +224,22 @@ def generate_token(
 
     if not user or not verify_password(form.password, user.password):
         logger.warning(f"Swagger token failed for: {form.username}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials",
+        )
 
     token = _issue_token_for_user(user)
+
     logger.info(f"Token issued via Swagger for: {user.username}")
 
-    return UserLoginResponse(access_token=token, token_type="bearer")
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+    )
 
 
-@manage_admin_router.get("/admins", response_model=list[UserInfoResponse])
+@manage_admin_router.get("/admins", response_model=APIResponse)
 def get_all_user_info(
     db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
@@ -236,7 +252,7 @@ def get_all_user_info(
         users = [current_user]
         logger.info(f"User fetched own info: {current_user.username}")
 
-    return [
+    users_response = [
         UserInfoResponse(
             id=u.id,
             username=u.username,
@@ -246,8 +262,10 @@ def get_all_user_info(
         for u in users
     ]
 
+    return APIResponse(success=True, message=None, data=users_response)
 
-@manage_admin_router.delete("/delete/{username}", response_model=UserSignupResponse)
+
+@manage_admin_router.delete("/delete/{username}", response_model=APIResponse)
 def delete_user(
     username: str,
     db: Session = Depends(get_db),
@@ -263,14 +281,14 @@ def delete_user(
         db.delete(user)
         db.commit()
         logger.info(f"User deleted: {username}")
-        return UserSignupResponse(message="User deleted successfully")
+        return APIResponse(success=True, message="User deleted successfully", data=None)
     except Exception:
         db.rollback()
         logger.exception("Failed to delete user: %s", username)
         raise HTTPException(status_code=500, detail="Failed to delete user")
 
 
-@manage_admin_router.put("/update/{username}", response_model=UserSignupResponse)
+@manage_admin_router.put("/update/{username}", response_model=APIResponse)
 def update_user(
     username: str,
     request: UserUpdateRequest,
@@ -296,8 +314,22 @@ def update_user(
     try:
         db.commit()
         logger.info(f"User updated: {username}")
-        return UserSignupResponse(message="User updated successfully")
+        return APIResponse(success=True, message="User updated successfully", data=None)
     except Exception:
         db.rollback()
         logger.exception("Failed to update user: %s", username)
         raise HTTPException(status_code=500, detail="Failed to update user")
+
+
+@manage_admin_router.get(
+    "/admin/validate",
+    response_model=APIResponse,
+)
+async def validate_admin(
+    current_user: User = Depends(admin_auth_required),
+):
+    return APIResponse(
+        success=True,
+        message="Admin authentication successful",
+        data={"username": current_user.username},
+    )

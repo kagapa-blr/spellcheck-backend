@@ -44,6 +44,11 @@ class UserExistenceResponse(BaseModel):
     exists: bool
 
 
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
 class UserInfoResponse(BaseModel):
     id: int
     username: str

@@ -129,6 +129,7 @@ def get_current_user(
             audience=AUDIENCE,
             issuer=ISSUER,
         )
+
         username: str = payload.get("sub")
         if not username:
             raise credentials_exception
