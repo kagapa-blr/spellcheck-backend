@@ -36,7 +36,8 @@ class BloomWordFilter:
         self.original_word_count = db.query(MainDictionary).count()
 
         if self.original_word_count == 0:
-            logger.info("No words found in the database. "
+            logger.info(
+                "No words found in the database. "
                 "Assigning default Bloom filter capacity of 100000."
             )
 

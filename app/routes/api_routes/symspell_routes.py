@@ -1,15 +1,15 @@
-# routers/symspell_routes.py
-
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from app.config.logger_config import setup_logger
+from app.dbmodels.models import User
 from app.schemas.symspell_schema import (
     SuggestionRequest,
     SuggestionsResponse,
     SymSpellStatisticsResponse,
 )
+from app.services.security_service.auth import admin_auth_required
 from services.symspell_service.symspell_service import symspell_service
 
 logger = setup_logger(__name__)
@@ -22,18 +22,12 @@ symspell_router = APIRouter()
     response_model=SuggestionsResponse,
     summary="Get spelling suggestions",
 )
-def get_suggestions(request: SuggestionRequest):
-    """
-    Get spelling suggestions for a given word.
+def get_suggestions(
+    request: SuggestionRequest,
+):
 
-    Example:
-        POST /symspell/suggestions
-
-        {
-            "word": "kannda"
-        }
-    """
     try:
+
         suggestions = symspell_service.get_suggestions(
             word=request.word,
             limit=5,
@@ -42,10 +36,7 @@ def get_suggestions(request: SuggestionRequest):
         return SuggestionsResponse(suggestions=suggestions)
 
     except Exception as e:
-        logger.error(
-            f"Error getting suggestions: {str(e)}",
-            exc_info=True,
-        )
+        logger.error(f"Error getting suggestions: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve suggestions",
@@ -57,19 +48,22 @@ def get_suggestions(request: SuggestionRequest):
     response_model=SymSpellStatisticsResponse,
     summary="Get SymSpell statistics",
 )
-def get_statistics():
+def get_statistics(
+    current_user: User = Depends(admin_auth_required),
+):
     """
     Returns runtime statistics for SymSpell.
 
     Includes:
     - Loaded word count
-    - Database word count
     - Max word length
     - Edit distance configuration
     - Prefix length
     - Initialization status
     """
     try:
+        logger.info(f"SymSpell statistics requested by admin: {current_user.username}")
+
         stats = symspell_service.get_statistics()
 
         return SymSpellStatisticsResponse(**stats)
@@ -86,7 +80,9 @@ def get_statistics():
 
 
 @symspell_router.post("/reload")
-def reload_symspell():
+def reload_symspell(
+    current_user: User = Depends(admin_auth_required),
+):
     """
     Rebuilds SymSpell from the MainDictionary table.
 
@@ -96,7 +92,7 @@ def reload_symspell():
     all words from the database.
     """
     try:
-        logger.info("Admin requested SymSpell reload")
+        logger.info(f"Admin requested SymSpell reload: {current_user.username}")
 
         stats = symspell_service.reinitialize()
 
@@ -124,25 +120,33 @@ def reload_symspell():
     "/health",
     summary="SymSpell health check",
 )
-def health_check():
+def health_check(
+    current_user: User = Depends(admin_auth_required),
+):
     """
     Lightweight endpoint to verify that
     SymSpell is initialized and operational.
     """
     try:
+        logger.info(
+            f"SymSpell health check requested by admin: {current_user.username}"
+        )
+
         stats = symspell_service.get_statistics()
 
-        is_healthy = (
-            stats["initialized"]
-            and stats["symspell_word_count"] > 0
-            and stats["has_delete_dictionary"]
+        loaded_words = (
+            stats.get("current_symspell_words_count")
+            if "current_symspell_words_count" in stats
+            else stats.get("symspell_word_count", 0)
         )
+
+        is_healthy = stats["initialized"] and loaded_words > 0
 
         return {
             "healthy": is_healthy,
             "initialized": stats["initialized"],
-            "loaded_words": stats["symspell_word_count"],
-            "dictionary_match": stats["dictionary_match"],
+            "loaded_words": loaded_words,
+            "last_updated": stats.get("last_updated"),
         }
 
     except Exception as e:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from threading import RLock
 from typing import Any
 
@@ -11,7 +12,7 @@ from app.config.database import get_db
 from app.config.logger_config import setup_logger
 from app.dbmodels.models import MainDictionary
 
-logger = setup_logger(__name__)
+logger = setup_logger("symspell_service")
 
 
 class SymSpellService:
@@ -43,6 +44,7 @@ class SymSpellService:
         self._initialized = False
         self._loaded_word_count = 0
         self._max_word_length = 0
+        self._last_updated: datetime | None = None
 
     @property
     def instance(self) -> SymSpell:
@@ -53,7 +55,6 @@ class SymSpellService:
         Load dictionary into SymSpell.
         """
         with self._lock:
-
             logger.info("Initializing SymSpell...")
 
             db: Session = next(get_db())
@@ -64,9 +65,9 @@ class SymSpellService:
                 ).all()
 
                 loaded_count = 0
+                max_word_length = 0
 
                 for word, frequency in result:
-                    # Defensive casting: ensure we pass a string term and integer frequency
                     try:
                         term = str(word).strip()
                     except Exception:
@@ -82,20 +83,17 @@ class SymSpellService:
 
                     self._symspell.create_dictionary_entry(term, freq)
                     loaded_count += 1
-
-                    # track max word length locally
-                    try:
-                        self._max_word_length = max(self._max_word_length, len(term))
-                    except Exception:
-                        pass
+                    max_word_length = max(max_word_length, len(term))
 
                 self._loaded_word_count = loaded_count
+                self._max_word_length = max_word_length
                 self._initialized = True
+                self._last_updated = datetime.now()
 
                 logger.info(
                     f"SymSpell initialized successfully. "
                     f"Loaded words={loaded_count}, "
-                    f"word_count={self._symspell.word_count}"
+                    f"last_updated={self._last_updated}"
                 )
 
                 return self.get_statistics()
@@ -107,9 +105,7 @@ class SymSpellService:
         """
         Create a fresh SymSpell instance and reload.
         """
-
         with self._lock:
-
             logger.info("Reinitializing SymSpell...")
 
             self._symspell = SymSpell(
@@ -131,7 +127,6 @@ class SymSpellService:
         """
         Get spelling suggestions.
         """
-
         word = word.strip()
 
         if not word:
@@ -150,46 +145,25 @@ class SymSpellService:
         if not suggestions:
             return []
 
-        suggestions = sorted(
-            suggestions,
-            key=lambda x: x.count,
-            reverse=True,
-        )
+        # suggestions = sorted(
+        #     suggestions,
+        #     key=lambda x: x.count,
+        #     reverse=True,
+        # )
 
         return [suggestion.term for suggestion in suggestions[:limit]]
 
     def get_statistics(self) -> dict[str, Any]:
-        """
-        Get runtime statistics.
-        """
-
-        db_count = 0
-
-        try:
-            db: Session = next(get_db())
-
-            try:
-                db_count = db.query(MainDictionary).count()
-            finally:
-                db.close()
-
-        except Exception as e:
-            logger.warning(f"Unable to fetch database count: {e}")
-
         return {
             "initialized": self._initialized,
-            "loaded_words": self._loaded_word_count,
-            "symspell_word_count": self._symspell.word_count,
-            "database_word_count": db_count,
+            "current_symspell_words_count": self._loaded_word_count,
             "max_word_length": self._max_word_length,
             "max_dictionary_edit_distance": self.max_dictionary_edit_distance,
             "prefix_length": self.prefix_length,
-            "has_delete_dictionary": hasattr(self._symspell, "_deletes"),
-            "dictionary_match": self._symspell.word_count == db_count,
+            "last_updated": self._last_updated,
         }
 
 
-# Module-level singleton service and startup helper
 symspell_service = SymSpellService()
 
 

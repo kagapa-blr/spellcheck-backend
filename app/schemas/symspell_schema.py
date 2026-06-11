@@ -1,3 +1,6 @@
+from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -11,11 +14,8 @@ class SuggestionsResponse(BaseModel):
 
 class SymSpellStatisticsResponse(BaseModel):
     initialized: bool
-    loaded_words: int
-    symspell_word_count: int
-    database_word_count: int
+    current_symspell_words_count: int
     max_word_length: int
     max_dictionary_edit_distance: int
     prefix_length: int
-    has_delete_dictionary: bool
-    dictionary_match: bool
+    last_updated: Optional[datetime] = None

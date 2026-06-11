@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import func
+from sqlalchemy import exists
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -129,7 +130,10 @@ class MainDictionaryService:
                             db.query(MainDictionary)
                             .filter(func.lower(MainDictionary.word) == lw)
                             .update(
-                                {MainDictionary.frequency: MainDictionary.frequency + row.frequency},
+                                {
+                                    MainDictionary.frequency: MainDictionary.frequency
+                                    + row.frequency
+                                },
                                 synchronize_session=False,
                             )
                         )
@@ -141,7 +145,12 @@ class MainDictionaryService:
                                 .first()
                             )
                             if existing:
-                                updated_words.append({"word": existing.word, "frequency": existing.frequency})
+                                updated_words.append(
+                                    {
+                                        "word": existing.word,
+                                        "frequency": existing.frequency,
+                                    }
+                                )
                             # continue to next entry
                             continue
 
@@ -155,12 +164,19 @@ class MainDictionaryService:
                                 )
                             )
                             db.commit()
-                            added_words.append({"word": row.word, "frequency": row.frequency})
+                            added_words.append(
+                                {"word": row.word, "frequency": row.frequency}
+                            )
                         except IntegrityError:
                             # Another transaction inserted concurrently — rollback and update instead
                             db.rollback()
-                            db.query(MainDictionary).filter(func.lower(MainDictionary.word) == lw).update(
-                                {MainDictionary.frequency: MainDictionary.frequency + row.frequency},
+                            db.query(MainDictionary).filter(
+                                func.lower(MainDictionary.word) == lw
+                            ).update(
+                                {
+                                    MainDictionary.frequency: MainDictionary.frequency
+                                    + row.frequency
+                                },
                                 synchronize_session=False,
                             )
                             existing = (
@@ -169,10 +185,17 @@ class MainDictionaryService:
                                 .first()
                             )
                             if existing:
-                                updated_words.append({"word": existing.word, "frequency": existing.frequency})
+                                updated_words.append(
+                                    {
+                                        "word": existing.word,
+                                        "frequency": existing.frequency,
+                                    }
+                                )
 
                     except Exception:
-                        logger.exception("Error merging new_map entry after IntegrityError")
+                        logger.exception(
+                            "Error merging new_map entry after IntegrityError"
+                        )
 
                 # commit any remaining updates
                 try:
@@ -191,6 +214,21 @@ class MainDictionaryService:
             db.rollback()
             logger.exception("Error adding words to main dictionary")
             raise
+
+    @staticmethod
+    def word_exists(db: Session, word: str) -> bool | None:
+        try:
+            cleaned = clean_kannada_word(word)
+        except Exception as e:
+            return False
+        stmt = select(
+            exists().where(func.lower(MainDictionary.word) == cleaned.lower())
+        )
+        return db.scalar(stmt)
+
+    @staticmethod
+    def get_count(db: Session) -> int:
+        return db.query(func.count(MainDictionary.id)).scalar() or 0
 
     @staticmethod
     def delete_words(db: Session, words: list[str]) -> dict:
@@ -315,59 +353,88 @@ class MainDictionaryService:
         words: list[str],
         approved_by_username: str,
     ) -> dict:
+        """
+        Approve user-added words by moving them into the main dictionary.
+
+        - Existing main dictionary words have their frequency increased.
+        - New words are inserted into the main dictionary.
+        - Approved words are removed from UserAddedWord.
+        """
 
         if not approved_by_username:
-            raise ValueError("added_by_username is required")
-
-        user = (
-            db.query(User)
-            .filter(func.lower(User.username) == approved_by_username.lower())
-            .first()
-        )
-
-        if not user:
-            raise ValueError(f"added_by_username '{approved_by_username}' not found")
-
-        username_to_use = user.username
+            raise ValueError("approved_by_username is required")
 
         try:
-            lowered = [w.lower() for w in words]
+            user = (
+                db.query(User)
+                .filter(func.lower(User.username) == approved_by_username.lower())
+                .first()
+            )
+
+            if not user:
+                raise ValueError(
+                    f"approved_by_username '{approved_by_username}' not found"
+                )
+
+            username_to_use = user.username
+
+            lowered_words = list(
+                {word.strip().lower() for word in words if word and word.strip()}
+            )
+
+            if not lowered_words:
+                return {
+                    "approved_count": 0,
+                    "approved_words": [],
+                }
 
             user_words = (
                 db.query(UserAddedWord)
-                .filter(func.lower(UserAddedWord.word).in_(lowered))
+                .filter(func.lower(UserAddedWord.word).in_(lowered_words))
                 .all()
             )
 
             if not user_words:
                 return {
-                    "moved_count": 0,
-                    "moved_words": [],
+                    "approved_count": 0,
+                    "approved_words": [],
                 }
 
-            moved_words = []
+            existing_main_words = (
+                db.query(MainDictionary)
+                .filter(
+                    func.lower(MainDictionary.word).in_(
+                        [uw.word.lower() for uw in user_words]
+                    )
+                )
+                .all()
+            )
+
+            main_word_map = {row.word.lower(): row for row in existing_main_words}
+
+            approved_words = []
+            added_count = 0
+            updated_count = 0
 
             for user_word in user_words:
 
-                existing_main = (
-                    db.query(MainDictionary)
-                    .filter(func.lower(MainDictionary.word) == user_word.word.lower())
-                    .first()
-                )
+                existing_main = main_word_map.get(user_word.word.lower())
 
                 if existing_main:
                     existing_main.frequency += user_word.frequency
+                    updated_count += 1
 
                 else:
-                    db.add(
-                        MainDictionary(
-                            word=user_word.word,
-                            frequency=user_word.frequency,
-                            added_by_username=username_to_use,
-                        )
+                    new_word = MainDictionary(
+                        word=user_word.word,
+                        frequency=user_word.frequency,
+                        added_by_username=username_to_use,
                     )
 
-                moved_words.append(
+                    db.add(new_word)
+                    added_count += 1
+
+                approved_words.append(
                     {
                         "word": user_word.word,
                         "frequency": user_word.frequency,
@@ -378,14 +445,23 @@ class MainDictionaryService:
 
             db.commit()
 
+            logger.info(
+                f"User words approval completed. "
+                f"Approved={len(approved_words)}, "
+                f"Added={added_count}, "
+                f"Updated={updated_count}, "
+                f"Deleted={len(approved_words)}, "
+                f"ApprovedBy={username_to_use}"
+            )
+
             return {
-                "moved_count": len(moved_words),
-                "moved_words": moved_words,
+                "approved_count": len(approved_words),
+                "approved_words": approved_words,
             }
 
         except Exception:
             db.rollback()
-            logger.exception("Error moving user words to main dictionary")
+            logger.exception("Error approving user words into main dictionary")
             raise
 
 
@@ -441,6 +517,10 @@ class UserAddedWordService:
             db.rollback()
             logger.exception("Error adding user words")
             raise
+
+    @staticmethod
+    def get_count(db: Session) -> int:
+        return db.query(func.count(UserAddedWord.id)).scalar() or 0
 
     @staticmethod
     def delete_words(db: Session, words: list[str]) -> dict:

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import os
+
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 # Load environment variables from the .env file
 load_dotenv()
+
 
 def add_security_middleware(app):
     """
@@ -29,7 +31,7 @@ def add_security_middleware(app):
     # Trusted Hosts Middleware to prevent Host header attacks
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["*.karnataka.gov.in", "127.0.0.1", "localhost", "*"]
+        allowed_hosts=["*.karnataka.gov.in", "127.0.0.1", "localhost", "*"],
     )
 
     # Allow CORS for trusted origins
@@ -39,7 +41,8 @@ def add_security_middleware(app):
             "https://*.karnataka.gov.in",
             "http://127.0.0.1",
             "http://localhost",
-            "http://localhost:5173"  # Add this line to allow your frontend port
+            "http://localhost:5173",  # Add this line to allow your frontend port
+            "http://localhost:5174",
         ],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE"],
@@ -71,4 +74,3 @@ def add_security_middleware(app):
             return response
 
     app.add_middleware(SecureHeadersMiddleware)
-

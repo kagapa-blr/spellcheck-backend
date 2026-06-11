@@ -1,19 +1,23 @@
-# routers/bloom_filter_routes.py
-
 from __future__ import annotations
 
 import re
 from datetime import datetime
+from io import BytesIO
 from threading import Lock
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
+from docx import Document
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.config.logger_config import setup_logger
+from app.dbmodels.models import User
 from app.services.bloom_service.bloom_filter import BloomWordFilter
+from app.services.security_service.auth import admin_auth_required
+from utils.kannada_word_clean import clean_kannada_word
 
 logger = setup_logger(__name__)
 
@@ -34,6 +38,7 @@ bloom_reload_lock = Lock()
 # Request Models
 # ============================================================
 
+
 class WordCheckRequest(BaseModel):
     words: list[str] = Field(
         ...,
@@ -45,6 +50,7 @@ class WordCheckRequest(BaseModel):
 # ============================================================
 # Response Models
 # ============================================================
+
 
 class WordResult(BaseModel):
     word: str
@@ -79,9 +85,19 @@ class BloomReloadResponse(BaseModel):
     reloaded_at: datetime
 
 
+class BloomNotFoundWordsList(BaseModel):
+    words_list: list[str]
+
+
+class BloomWrongWordsFileResponse(BaseModel):
+    file_content: str
+    wrong_words: list[str]
+
+
 # ============================================================
 # Initialization Functions
 # ============================================================
+
 
 async def bloom_initialization() -> None:
     """
@@ -170,11 +186,40 @@ async def bloom_reinitialization() -> None:
         db.close()
 
 
+def filter_missing_words(
+    words: list[str],
+) -> list[str]:
+    """
+    Return words that are definitely not present in the Bloom filter.
+    """
+
+    if loaded_bloom is None:
+        logger.warning("filter_missing_words called before Bloom initialization.")
+        return words
+
+    missing_words = []
+
+    for word in words:
+        cleaned_word = clean_kannada_word(word)
+
+        # Skip invalid/empty words
+        if not cleaned_word:
+            continue
+
+        if cleaned_word not in loaded_bloom:
+            missing_words.append(cleaned_word)
+
+    logger.info(f"Filtered {len(words)} words. Missing={len(missing_words)}")
+
+    return missing_words
+
+
 # ============================================================
 # APIs
 # ============================================================
 
-@bloom_router.post("/check/",response_model=WordCheckResponse)
+
+@bloom_router.post("/check/", response_model=WordCheckResponse)
 async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
     """
     Check one or more words against the Bloom filter.
@@ -182,18 +227,14 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
 
     try:
         if loaded_bloom is None:
-            logger.warning(
-                "Word check requested before Bloom filter initialization."
-            )
+            logger.warning("Word check requested before Bloom filter initialization.")
 
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Bloom filter is not initialized.",
             )
 
-        logger.info(
-            f"Checking {len(request.words)} words against Bloom filter."
-        )
+        logger.info(f"Checking {len(request.words)} words against Bloom filter.")
 
         results: list[WordResult] = []
 
@@ -210,7 +251,6 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
                 )
                 continue
 
-            # English words and numbers bypass dictionary lookup
             if re.fullmatch(r"[a-zA-Z0-9]+", word):
                 results.append(
                     WordResult(
@@ -235,10 +275,7 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
                 )
             )
 
-        matched_words = sum(
-            1 for result in results if result.exists
-        )
-
+        matched_words = sum(1 for result in results if result.exists)
         missing_words = len(results) - matched_words
 
         logger.info(
@@ -270,17 +307,28 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
         )
 
 
-@bloom_router.get("/status/",response_model=BloomFilterStatsResponse)
-async def get_bloom_stats() -> BloomFilterStatsResponse:
+@bloom_router.get("/filter/wrongwords", response_model=BloomNotFoundWordsList)
+async def get_wrong_words(word_list: list):
+    missing_words_list = filter_missing_words(words=word_list)
+    return BloomNotFoundWordsList(words_list=missing_words_list)
+
+
+@bloom_router.get(
+    "/statistics/",
+    response_model=BloomFilterStatsResponse,
+)
+async def get_bloom_stats(
+    current_user: User = Depends(admin_auth_required),
+) -> BloomFilterStatsResponse:
     """
     Return Bloom filter statistics.
     """
 
     try:
+        logger.info(f"Bloom stats requested by admin: {current_user.username}")
+
         if loaded_bloom is None:
-            logger.warning(
-                "Bloom stats requested before initialization."
-            )
+            logger.warning("Bloom stats requested before initialization.")
 
             return BloomFilterStatsResponse(
                 initialized=False,
@@ -298,9 +346,7 @@ async def get_bloom_stats() -> BloomFilterStatsResponse:
         capacity = loaded_bloom.get_capacity()
 
         utilization_percent = (
-            round((bloom_size / capacity) * 100, 2)
-            if capacity > 0
-            else 0.0
+            round((bloom_size / capacity) * 100, 2) if capacity > 0 else 0.0
         )
 
         logger.info(
@@ -334,8 +380,10 @@ async def get_bloom_stats() -> BloomFilterStatsResponse:
         )
 
 
-@bloom_router.post("/reload/",response_model=BloomReloadResponse)
-async def reload_bloom_filter() -> BloomReloadResponse:
+@bloom_router.post("/reload/", response_model=BloomReloadResponse)
+async def reload_bloom_filter(
+    current_user: User = Depends(admin_auth_required),
+) -> BloomReloadResponse:
     """
     Rebuild the Bloom filter from the database.
 
@@ -345,6 +393,8 @@ async def reload_bloom_filter() -> BloomReloadResponse:
 
     global loaded_bloom
 
+    logger.info(f"Bloom reload requested by admin: {current_user.username}")
+
     if not bloom_reload_lock.acquire(blocking=False):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -353,14 +403,11 @@ async def reload_bloom_filter() -> BloomReloadResponse:
 
     try:
         previous_count = (
-            loaded_bloom.get_loaded_count()
-            if loaded_bloom is not None
-            else 0
+            loaded_bloom.get_loaded_count() if loaded_bloom is not None else 0
         )
 
         logger.info(
-            f"Starting Bloom filter reload. "
-            f"CurrentLoadedCount={previous_count}"
+            f"Starting Bloom filter reload. CurrentLoadedCount={previous_count}"
         )
 
         await bloom_reinitialization()
@@ -401,32 +448,48 @@ async def reload_bloom_filter() -> BloomReloadResponse:
         bloom_reload_lock.release()
 
 
-# ============================================================
-# Utility Functions
-# ============================================================
-
-def filter_missing_words(
-        words: list[str],
-) -> list[str]:
+@bloom_router.post(
+    "/filter/wrongwords/file", response_model=BloomWrongWordsFileResponse
+)
+async def get_wrong_words_from_file(file: UploadFile = File(...)):
     """
-    Return words that are definitely not present in the Bloom filter.
+    Upload a .txt or .docx file and return:
+    - file_content
+    - wrong_words
     """
 
-    if loaded_bloom is None:
-        logger.warning(
-            "filter_missing_words called before Bloom initialization."
+    filename = file.filename.lower()
+
+    if not (filename.endswith(".txt") or filename.endswith(".docx")):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .txt and .docx files are supported.",
         )
-        return words
 
-    missing_words = [
-        word
-        for word in words
-        if word not in loaded_bloom
-    ]
+    try:
+        content = ""
 
-    logger.info(
-        f"Filtered {len(words)} words. "
-        f"Missing={len(missing_words)}"
-    )
+        if filename.endswith(".txt"):
+            content = (await file.read()).decode("utf-8")
 
-    return missing_words
+        elif filename.endswith(".docx"):
+            file_bytes = await file.read()
+
+            document = Document(BytesIO(file_bytes))
+
+            content = "\n".join(paragraph.text for paragraph in document.paragraphs)
+
+        words = content.split()
+
+        wrong_words = filter_missing_words(words=words)
+
+        return BloomWrongWordsFileResponse(
+            file_content=content,
+            wrong_words=wrong_words,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process file: {str(exc)}",
+        )

@@ -37,4 +37,3 @@ class AddWordsResponse(BaseModel):
 
 class ApproveUserWordsRequest(BaseModel):
     words: list[str]
-    approved_by_username: str
