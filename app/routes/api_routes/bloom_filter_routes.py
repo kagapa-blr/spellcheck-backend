@@ -7,7 +7,8 @@ from threading import Lock
 from typing import Optional
 
 from docx import Document
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends
+from fastapi import HTTPException, status
 from fastapi import UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -304,6 +305,66 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to check words in Bloom filter.",
+        )
+
+
+@bloom_router.get("/check/{word}", response_model=WordResult)
+async def check_single_word(word: str) -> WordResult:
+    """
+    Check a single word against the Bloom filter.
+    """
+
+    try:
+        if loaded_bloom is None:
+            logger.warning(
+                "Single word check requested before Bloom filter initialization."
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Bloom filter is not initialized.",
+            )
+
+        word = word.strip()
+
+        if not word:
+            return WordResult(
+                word=word,
+                exists=False,
+                reason="Empty word",
+            )
+
+        if re.fullmatch(r"[a-zA-Z0-9]+", word):
+            return WordResult(
+                word=word,
+                exists=True,
+                reason="Contains only English letters or digits",
+            )
+
+        exists = word in loaded_bloom
+
+        return WordResult(
+            word=word,
+            exists=exists,
+            reason=(
+                "Present in Main Dictionary"
+                if exists
+                else "Definitely not in dictionary"
+            ),
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(
+            f"Error checking word '{word}' in Bloom filter: {str(e)}",
+            exc_info=True,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check word in Bloom filter.",
         )
 
 

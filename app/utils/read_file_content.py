@@ -39,7 +39,7 @@ class FileWordProcessor:
         return result
 
     @staticmethod
-    def process_docx(file_path: str) -> List[Dict[str, Any]]:
+    def process_docx(file_path: str) -> list[Dict[str, Any]]:
         logger.info(f"DOCX processing started | file={file_path}")
 
         text = FileWordProcessor._read_docx(file_path)
@@ -100,7 +100,7 @@ class FileWordProcessor:
     # -----------------------------------------
 
     @staticmethod
-    def _process_text(text: str) -> List[Dict[str, Any]]:
+    def _process_text(text: str) -> list[Dict[str, Any]]:
         if not text:
             logger.warning("Empty text received for processing")
             return []
@@ -119,11 +119,11 @@ class FileWordProcessor:
         skipped_words = 0
 
         for word in raw_words:
-            try:
-                cleaned_word = clean_kannada_word(word)
-                cleaned_words.append(cleaned_word)
+            cleaned_word = clean_kannada_word(word)
 
-            except ValueError:
+            if cleaned_word:
+                cleaned_words.append(cleaned_word)
+            else:
                 skipped_words += 1
 
         logger.info(

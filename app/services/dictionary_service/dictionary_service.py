@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import exists
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
 from app.config.logger_config import setup_logger
@@ -37,7 +38,7 @@ class MainDictionaryService:
                 "added_by_username is required for adding main dictionary words"
             )
             raise ValueError("added_by_username is required")
-
+        logger.info(f"Total Words given for Adding to Main dictionary : {len(words)}")
         username_to_use: str
         try:
             user = (
@@ -60,22 +61,23 @@ class MainDictionaryService:
             raise
 
         try:
-            # Normalize and collect all cleaned input words first
-            cleaned_items: list[tuple[str, int]] = []
+            # Aggregate input words (clean and sum frequencies for duplicates)
+            aggregated: dict[str, int] = {}
             for item in words:
                 raw = item.get("word", "")
                 try:
                     word = clean_kannada_word(raw)
                 except Exception as e:
-                    logger.warning(
-                        f"Skipping invalid main dictionary word '{raw}': {e}"
-                    )
+                    logger.warning(f"Skipping invalid main dictionary word '{raw}': {e}")
                     continue
 
                 frequency = int(item.get("frequency", 1) or 1)
-                cleaned_items.append((word, frequency))
+                key = word.strip()
+                if not key:
+                    continue
+                aggregated[key] = aggregated.get(key, 0) + frequency
 
-            if not cleaned_items:
+            if not aggregated:
                 return {
                     "added_count": 0,
                     "updated_count": 0,
@@ -83,125 +85,64 @@ class MainDictionaryService:
                     "updated_words": [],
                 }
 
-            # Fetch existing rows for all input words in one query
-            input_words_lower = [w.lower() for w, _ in cleaned_items]
+            # Prepare lowercase list for existing lookup
+            input_lowers = [w.lower() for w in aggregated.keys()]
+
             existing_rows = (
                 db.query(MainDictionary)
-                .filter(func.lower(MainDictionary.word).in_(input_words_lower))
+                .filter(func.lower(MainDictionary.word).in_(input_lowers))
                 .all()
             )
 
-            existing_map = {row.word.lower(): row for row in existing_rows}
+            existing_lower_set = {r.word.lower() for r in existing_rows}
 
-            # Track newly added words within this transaction to avoid duplicate inserts
-            new_map: dict[str, MainDictionary] = {}
+            # Build bulk insert rows
+            table = MainDictionary.__table__
+            insert_rows = [
+                {"word": w, "frequency": f, "added_by_username": username_to_use}
+                for w, f in aggregated.items()
+            ]
 
-            for word, frequency in cleaned_items:
-                lw = word.lower()
-
-                if lw in existing_map:
-                    row = existing_map[lw]
-                    row.frequency += frequency
-                    updated_words.append({"word": row.word, "frequency": row.frequency})
-                elif lw in new_map:
-                    row = new_map[lw]
-                    row.frequency += frequency
-                    updated_words.append({"word": row.word, "frequency": row.frequency})
-                else:
-                    row = MainDictionary(
-                        word=word,
-                        frequency=frequency,
-                        added_by_username=username_to_use,
-                    )
-                    db.add(row)
-                    new_map[lw] = row
-                    added_words.append({"word": word, "frequency": frequency})
+            # MySQL upsert: add frequencies on duplicate key
+            insert_stmt = mysql_insert(table).values(insert_rows)
+            upsert_stmt = insert_stmt.on_duplicate_key_update(
+                frequency=(table.c.frequency + insert_stmt.inserted.frequency)
+            )
 
             try:
+                db.execute(upsert_stmt)
                 db.commit()
-            except IntegrityError:
-                # Fallback for race conditions / duplicate key errors: update existing rows
+            except Exception:
                 db.rollback()
+                # Fallback to row-by-row logic if dialect or unexpected error
+                logger.exception("Bulk upsert failed, falling back to row-by-row merge")
 
-                for lw, row in new_map.items():
-                    try:
-                        # First try to update existing row (atomic)
-                        updated_count = (
-                            db.query(MainDictionary)
-                            .filter(func.lower(MainDictionary.word) == lw)
-                            .update(
-                                {
-                                    MainDictionary.frequency: MainDictionary.frequency
-                                    + row.frequency
-                                },
-                                synchronize_session=False,
-                            )
-                        )
+                for w, f in aggregated.items():
+                    lw = w.lower()
+                    if lw in existing_lower_set:
+                        db.query(MainDictionary).filter(
+                            func.lower(MainDictionary.word) == lw
+                        ).update({MainDictionary.frequency: MainDictionary.frequency + f}, synchronize_session=False)
+                    else:
+                        db.add(MainDictionary(word=w, frequency=f, added_by_username=username_to_use))
 
-                        if updated_count:
-                            existing = (
-                                db.query(MainDictionary)
-                                .filter(func.lower(MainDictionary.word) == lw)
-                                .first()
-                            )
-                            if existing:
-                                updated_words.append(
-                                    {
-                                        "word": existing.word,
-                                        "frequency": existing.frequency,
-                                    }
-                                )
-                            # continue to next entry
-                            continue
+                db.commit()
 
-                        # No existing row updated — try to insert and commit immediately.
-                        try:
-                            db.add(
-                                MainDictionary(
-                                    word=row.word,
-                                    frequency=row.frequency,
-                                    added_by_username=row.added_by_username,
-                                )
-                            )
-                            db.commit()
-                            added_words.append(
-                                {"word": row.word, "frequency": row.frequency}
-                            )
-                        except IntegrityError:
-                            # Another transaction inserted concurrently — rollback and update instead
-                            db.rollback()
-                            db.query(MainDictionary).filter(
-                                func.lower(MainDictionary.word) == lw
-                            ).update(
-                                {
-                                    MainDictionary.frequency: MainDictionary.frequency
-                                    + row.frequency
-                                },
-                                synchronize_session=False,
-                            )
-                            existing = (
-                                db.query(MainDictionary)
-                                .filter(func.lower(MainDictionary.word) == lw)
-                                .first()
-                            )
-                            if existing:
-                                updated_words.append(
-                                    {
-                                        "word": existing.word,
-                                        "frequency": existing.frequency,
-                                    }
-                                )
+            # Fetch final rows to report added/updated and frequencies
+            final_rows = (
+                db.query(MainDictionary)
+                .filter(func.lower(MainDictionary.word).in_(input_lowers))
+                .all()
+            )
 
-                    except Exception:
-                        logger.exception(
-                            "Error merging new_map entry after IntegrityError"
-                        )
+            added_words = []
+            updated_words = []
 
-                # commit any remaining updates
-                try:
-                    db.commit()
-                except Exception:
-                    db.rollback()
+            for row in final_rows:
+                if row.word.lower() in existing_lower_set:
+                    updated_words.append({"word": row.word, "frequency": row.frequency})
+                else:
+                    added_words.append({"word": row.word, "frequency": row.frequency})
 
             return {
                 "added_count": len(added_words),
@@ -474,11 +415,12 @@ class UserAddedWordService:
 
     @staticmethod
     def add_words(db: Session, words: list[dict[str, Any]]) -> dict:
-
         added_words = []
         updated_words = []
 
         try:
+            # Aggregate input words to sum frequencies for duplicates
+            aggregated: dict[str, int] = {}
             for item in words:
                 raw = item.get("word", "")
                 try:
@@ -487,24 +429,59 @@ class UserAddedWordService:
                     logger.warning(f"Skipping invalid user-added word '{raw}': {e}")
                     continue
 
-                frequency = item.get("frequency", 1)
+                frequency = int(item.get("frequency", 1) or 1)
+                key = word.strip()
+                if not key:
+                    continue
+                aggregated[key] = aggregated.get(key, 0) + frequency
 
-                existing = (
-                    db.query(UserAddedWord)
-                    .filter(func.lower(UserAddedWord.word) == word.lower())
-                    .first()
-                )
+            if not aggregated:
+                return {
+                    "added_count": 0,
+                    "updated_count": 0,
+                    "added_words": [],
+                    "updated_words": [],
+                }
 
-                if existing:
-                    existing.frequency += frequency
-                    updated_words.append(
-                        {"word": existing.word, "frequency": existing.frequency}
-                    )
+            input_lowers = [w.lower() for w in aggregated.keys()]
+
+            existing_rows = (
+                db.query(UserAddedWord)
+                .filter(func.lower(UserAddedWord.word).in_(input_lowers))
+                .all()
+            )
+
+            existing_map = {r.word.lower(): r for r in existing_rows}
+
+            # Prepare bulk update mappings and insert mappings
+            update_mappings = []
+            insert_mappings = []
+
+            for w, f in aggregated.items():
+                lw = w.lower()
+                if lw in existing_map:
+                    existing = existing_map[lw]
+                    update_mappings.append({"id": existing.id, "frequency": existing.frequency + f})
                 else:
-                    db.add(UserAddedWord(word=word, frequency=frequency))
-                    added_words.append({"word": word, "frequency": frequency})
+                    insert_mappings.append({"word": w, "frequency": f})
+
+            if update_mappings:
+                db.bulk_update_mappings(UserAddedWord, update_mappings)
+
+            if insert_mappings:
+                db.bulk_insert_mappings(UserAddedWord, insert_mappings)
 
             db.commit()
+
+            # Build response lists
+            for mapping in insert_mappings:
+                added_words.append({"word": mapping["word"], "frequency": mapping["frequency"]})
+
+            for m in update_mappings:
+                # mapped id -> fetch word to return consistent casing
+                row = db.get(UserAddedWord, m["id"])
+                if row:
+                    updated_words.append({"word": row.word, "frequency": row.frequency})
 
             return {
                 "added_count": len(added_words),
