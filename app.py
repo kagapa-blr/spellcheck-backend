@@ -23,6 +23,7 @@ from app.routes.web_routes.error_routes import setup_error_handlers
 from app.routes.web_routes.swagger_routes import setup_swagger_routes
 from app.services.security_service.app_security import add_security_middleware
 from app.services.security_service.auth import create_default_admin
+from routes.api_routes.admin_activities import admin_activities_router
 from routes.api_routes.manage_admins import manage_admin_router
 from services.symspell_service.symspell_service import symspell_initialization
 
@@ -189,6 +190,9 @@ app.include_router(manage_admin_router, prefix="/admin/api/v1", tags=["ADMINS"])
 app.include_router(dictionary_router, prefix="/dictionary/api/v1", tags=["Dictionary"])
 app.include_router(bloom_router, prefix="/bloom/api/v1", tags=["BLOOM API"])
 app.include_router(symspell_router, prefix="/symspell/api/v1", tags=["SymSpell API"])
+app.include_router(
+    admin_activities_router, prefix="/admin/api/v1/activity", tags=["Admin Activities"]
+)
 
 
 # --------------------------------------------------

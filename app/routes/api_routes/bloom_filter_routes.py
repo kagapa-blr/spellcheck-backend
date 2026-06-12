@@ -87,7 +87,7 @@ class BloomReloadResponse(BaseModel):
 
 
 class BloomNotFoundWordsList(BaseModel):
-    words_list: list[str]
+    wrong_words: list[str]
 
 
 class BloomWrongWordsFileResponse(BaseModel):
@@ -371,7 +371,7 @@ async def check_single_word(word: str) -> WordResult:
 @bloom_router.get("/filter/wrongwords", response_model=BloomNotFoundWordsList)
 async def get_wrong_words(word_list: list):
     missing_words_list = filter_missing_words(words=word_list)
-    return BloomNotFoundWordsList(words_list=missing_words_list)
+    return BloomNotFoundWordsList(wrong_words=missing_words_list)
 
 
 @bloom_router.get(
@@ -509,9 +509,7 @@ async def reload_bloom_filter(
         bloom_reload_lock.release()
 
 
-@bloom_router.post(
-    "/filter/wrongwords/file", response_model=BloomWrongWordsFileResponse
-)
+@bloom_router.post("/filter/wrongwords/file", response_model=BloomNotFoundWordsList)
 async def get_wrong_words_from_file(file: UploadFile = File(...)):
     """
     Upload a .txt or .docx file and return:
@@ -544,8 +542,7 @@ async def get_wrong_words_from_file(file: UploadFile = File(...)):
 
         wrong_words = filter_missing_words(words=words)
 
-        return BloomWrongWordsFileResponse(
-            file_content=content,
+        return BloomNotFoundWordsList(
             wrong_words=wrong_words,
         )
 
