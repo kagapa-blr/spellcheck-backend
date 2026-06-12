@@ -17,3 +17,4 @@ cryptography
 pytest 
 pytest-asyncio 
 httpx
+uvicorn
