@@ -5,14 +5,20 @@ After=network.target
 [Service]
 User=kcuser
 Group=kcuser
-WorkingDirectory=/home/kcuser/apps/spellcheck-backend
-ExecStart=/home/kcuser/apps/spellcheck-backend/venv/bin/uvicorn app:app --host 0.0.0.0 --port 8443
-StandardOutput=file:/home/kcuser/apps/spellcheck-backend/logs/out.log
-StandardError=file:/home/kcuser/apps/spellcheck-backend/logs/error.log
+
+WorkingDirectory=/Appdata/ekannada.karnataka.gov.in/kaagunitha
+
+ExecStart=/Appdata/ekannada.karnataka.gov.in/kaagunitha/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8080
+
+StandardOutput=journal
+StandardError=journal
+
 Restart=always
-RestartSec=10
-Environment="PATH=/home/kcuser/apps/spellcheck-backend/venv/bin"
-Environment="PYTHONUNBUFFERED=1"
+RestartSec=5
+LimitNOFILE=65536
+
+Environment="PATH=/Appdata/ekannada.karnataka.gov.in/kaagunitha/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
