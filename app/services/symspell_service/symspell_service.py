@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from threading import RLock
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,7 +44,7 @@ class SymSpellService:
         self._initialized = False
         self._loaded_word_count = 0
         self._max_word_length = 0
-        self._last_updated: datetime | None = None
+        self._last_updated: Optional[datetime] = None
 
     @property
     def instance(self) -> SymSpell:

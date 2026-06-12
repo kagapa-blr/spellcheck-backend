@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import exists
 from sqlalchemy import func, select
@@ -26,7 +26,7 @@ class MainDictionaryService:
     def add_words(
         db: Session,
         words: list[dict[str, Any]],
-        added_by_username: str | None = None,
+        added_by_username: Optional[str] = None,
     ) -> dict:
 
         added_words = []
@@ -157,7 +157,7 @@ class MainDictionaryService:
             raise
 
     @staticmethod
-    def word_exists(db: Session, word: str) -> bool | None:
+    def word_exists(db: Session, word: str) -> Optional[bool]:
         try:
             cleaned = clean_kannada_word(word)
         except Exception as e:
@@ -200,7 +200,7 @@ class MainDictionaryService:
             raise
 
     @staticmethod
-    def check_word(db: Session, word: str) -> dict | None:
+    def check_word(db: Session, word: str) -> Optional[dict]:
         entry = (
             db.query(MainDictionary)
             .filter(func.lower(MainDictionary.word) == word.lower())
@@ -229,7 +229,7 @@ class MainDictionaryService:
         db: Session,
         limit: int = 50,
         offset: int = 0,
-        search: str | None = None,
+        search: Optional[str] = None,
     ) -> dict:
 
         query = db.query(MainDictionary)
@@ -529,7 +529,7 @@ class UserAddedWordService:
             raise
 
     @staticmethod
-    def check_word(db: Session, word: str) -> dict | None:
+    def check_word(db: Session, word: str) -> Optional[dict]:
 
         entry = (
             db.query(UserAddedWord)
@@ -560,7 +560,7 @@ class UserAddedWordService:
         db: Session,
         limit: int = 50,
         offset: int = 0,
-        search: str | None = None,
+        search: Optional[str] = None,
     ) -> dict:
 
         query = db.query(UserAddedWord)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Generator
+from typing import Generator, Optional
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -27,11 +27,11 @@ SQLALCHEMY_DATABASE_URL = (
 Base = declarative_base()
 
 # Module-level placeholders that will be initialized via `init_engine()`
-_engine: Engine | None = None
-SessionLocal: sessionmaker | None = None
+_engine: Optional[Engine] = None
+SessionLocal: Optional[sessionmaker] = None
 
 
-def init_engine(url: str | None = None, **create_engine_kwargs) -> None:
+def init_engine(url: Optional[str] = None, **create_engine_kwargs) -> None:
     """
     Initialize the SQLAlchemy engine and sessionmaker. Call this during
     application startup (for example in FastAPI lifespan) so imports don't

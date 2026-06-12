@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -8,7 +10,7 @@ class WordInput(BaseModel):
 
 class AddMainDictionaryWordsRequest(BaseModel):
     words: list[WordInput]
-    added_by_username: str | None = None
+    added_by_username: Optional[str] = None
 
 
 class AddUserWordsRequest(BaseModel):
@@ -16,10 +18,6 @@ class AddUserWordsRequest(BaseModel):
 
 
 class WordListRequest(BaseModel):
-    """
-    WordListRequest : List of words
-    """
-
     words: list[str]
 
 

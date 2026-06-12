@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
+from typing import Optional
 from fastapi import (
     File,
     HTTPException,
@@ -73,7 +74,7 @@ def check_main_word(word: str, db: Session = Depends(get_db)):
 def list_main_words(
     limit: int = 50,
     offset: int = 0,
-    search: str | None = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
 
@@ -281,7 +282,7 @@ def delete_user_words(
 def list_user_words(
     limit: int = 50,
     offset: int = 0,
-    search: str | None = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
 
