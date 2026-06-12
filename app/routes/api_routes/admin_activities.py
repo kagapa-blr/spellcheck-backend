@@ -8,8 +8,8 @@ from fastapi import APIRouter, File, HTTPException, UploadFile, Depends
 
 from app.config.logger_config import setup_logger
 from app.dbmodels.models import User
+from app.services.security_service.auth import admin_auth_required
 from app.utils.read_file_content import FileWordProcessor
-from services.security_service.auth import admin_auth_required
 
 load_dotenv()
 

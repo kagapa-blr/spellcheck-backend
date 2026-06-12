@@ -15,18 +15,18 @@ from sqlalchemy.orm import Session
 from app.config.database import get_db
 from app.config.logger_config import setup_logger
 from app.dbmodels.models import User
-from schemas.common_response import APIResponse
-from schemas.dictionary_schema import (
+from app.schemas.common_response import APIResponse
+from app.schemas.dictionary_schema import (
     AddUserWordsRequest,
     WordListRequest,
     ApproveUserWordsRequest,
 )
-from services.dictionary_service.dictionary_service import (
+from app.services.dictionary_service.dictionary_service import (
     MainDictionaryService,
     UserAddedWordService,
 )
-from services.security_service.auth import admin_auth_required
-from utils.read_file_content import FileWordProcessor
+from app.services.security_service.auth import admin_auth_required
+from app.utils.read_file_content import FileWordProcessor
 
 logger = setup_logger(module_name=__name__)
 dictionary_router = APIRouter()

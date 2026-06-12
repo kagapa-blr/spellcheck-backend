@@ -10,7 +10,7 @@ from app.schemas.symspell_schema import (
     SymSpellStatisticsResponse,
 )
 from app.services.security_service.auth import admin_auth_required
-from services.symspell_service.symspell_service import symspell_service
+from app.services.symspell_service.symspell_service import symspell_service
 
 logger = setup_logger(__name__)
 

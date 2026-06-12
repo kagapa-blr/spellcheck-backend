@@ -13,19 +13,19 @@ from starlette.templating import Jinja2Templates
 
 from app.config.database import init_engine, get_engine
 from app.config.logger_config import setup_logger
+from app.routes.api_routes.admin_activities import admin_activities_router
 from app.routes.api_routes.bloom_filter_routes import (
     bloom_initialization,
     bloom_router,
 )
 from app.routes.api_routes.dictionary_routes import dictionary_router
+from app.routes.api_routes.manage_admins import manage_admin_router
 from app.routes.api_routes.symspell_routes import symspell_router
 from app.routes.web_routes.error_routes import setup_error_handlers
 from app.routes.web_routes.swagger_routes import setup_swagger_routes
 from app.services.security_service.app_security import add_security_middleware
 from app.services.security_service.auth import create_default_admin
-from routes.api_routes.admin_activities import admin_activities_router
-from routes.api_routes.manage_admins import manage_admin_router
-from services.symspell_service.symspell_service import symspell_initialization
+from app.services.symspell_service.symspell_service import symspell_initialization
 
 # --------------------------------------------------
 # Paths

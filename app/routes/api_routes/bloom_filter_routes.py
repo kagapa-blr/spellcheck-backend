@@ -18,7 +18,7 @@ from app.config.logger_config import setup_logger
 from app.dbmodels.models import User
 from app.services.bloom_service.bloom_filter import BloomWordFilter
 from app.services.security_service.auth import admin_auth_required
-from utils.kannada_word_clean import clean_kannada_word
+from app.utils.kannada_word_clean import clean_kannada_word
 
 logger = setup_logger(__name__)
 

@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 import unicodedata
 from docx import Document
 
-from config.logger_config import setup_logger
-from utils.kannada_word_clean import clean_kannada_word
+from app.config.logger_config import setup_logger
+from app.utils.kannada_word_clean import clean_kannada_word
 
 logger = setup_logger(module_name=__name__)
 
