@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from io import BytesIO
 from threading import Lock
@@ -117,10 +116,7 @@ async def bloom_initialization() -> None:
     try:
         logger.info("Starting Bloom filter initialization.")
 
-        loaded_bloom = BloomWordFilter(
-            db=db,
-            error_rate=0.001,
-        )
+        loaded_bloom = BloomWordFilter(db=db)
 
         loaded_bloom.load_words(db)
 
@@ -159,8 +155,7 @@ async def bloom_reinitialization() -> None:
         logger.info("Starting Bloom filter reinitialization.")
 
         new_bloom = BloomWordFilter(
-            db=db,
-            error_rate=0.001,
+            db=db
         )
 
         new_bloom.load_words(db)
@@ -188,7 +183,7 @@ async def bloom_reinitialization() -> None:
 
 
 def filter_missing_words(
-    words: list[str],
+        words: list[str],
 ) -> list[str]:
     """
     Return words that are definitely not present in the Bloom filter.
@@ -220,16 +215,20 @@ def filter_missing_words(
 # ============================================================
 
 
+import re
+
+# Regex for Kannada digits
+KANNADA_DIGITS_PATTERN = re.compile(r"^[\u0CE6-\u0CEF]+$")
+
+# Regex for only special characters (no letters/digits)
+SPECIAL_CHARS_PATTERN = re.compile(r"^[^\w]+$", re.UNICODE)
+
+
 @bloom_router.post("/check/", response_model=WordCheckResponse)
 async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
-    """
-    Check one or more words against the Bloom filter.
-    """
-
     try:
         if loaded_bloom is None:
             logger.warning("Word check requested before Bloom filter initialization.")
-
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Bloom filter is not initialized.",
@@ -243,48 +242,38 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
             word = raw_word.strip()
 
             if not word:
-                results.append(
-                    WordResult(
-                        word=raw_word,
-                        exists=False,
-                        reason="Empty word",
-                    )
-                )
+                results.append(WordResult(word=raw_word, exists=False, reason="Empty word"))
                 continue
 
+            # English letters/digits
             if re.fullmatch(r"[a-zA-Z0-9]+", word):
-                results.append(
-                    WordResult(
-                        word=word,
-                        exists=True,
-                        reason="Contains only English letters or digits",
-                    )
-                )
+                results.append(WordResult(word=word, exists=True, reason="Contains only English letters or digits"))
                 continue
 
-            exists = word in loaded_bloom
+            # Kannada digits
+            if KANNADA_DIGITS_PATTERN.fullmatch(word):
+                results.append(WordResult(word=word, exists=True, reason="Contains only Kannada digits"))
+                continue
 
+            # Only special characters
+            if SPECIAL_CHARS_PATTERN.fullmatch(word):
+                results.append(WordResult(word=word, exists=True, reason="Contains only special characters"))
+                continue
+
+            # Bloom filter check
+            exists = word in loaded_bloom
             results.append(
                 WordResult(
                     word=word,
                     exists=exists,
-                    reason=(
-                        "Present in Main Dictionary"
-                        if exists
-                        else "Definitely not in dictionary"
-                    ),
+                    reason="Present in Main Dictionary" if exists else "Definitely not in dictionary",
                 )
             )
 
         matched_words = sum(1 for result in results if result.exists)
         missing_words = len(results) - matched_words
 
-        logger.info(
-            f"Word check completed. "
-            f"Total={len(results)}, "
-            f"Matched={matched_words}, "
-            f"Missing={missing_words}"
-        )
+        logger.info(f"Word check completed. Total={len(results)}, Matched={matched_words}, Missing={missing_words}")
 
         return WordCheckResponse(
             total_words=len(results),
@@ -295,17 +284,10 @@ async def check_word_in_bloom(request: WordCheckRequest) -> WordCheckResponse:
 
     except HTTPException:
         raise
-
     except Exception as e:
-        logger.error(
-            f"Error checking words in Bloom filter: {str(e)}",
-            exc_info=True,
-        )
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to check words in Bloom filter.",
-        )
+        logger.error(f"Error checking words in Bloom filter: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Failed to check words in Bloom filter.")
 
 
 @bloom_router.get("/check/{word}", response_model=WordResult)
@@ -379,7 +361,7 @@ async def get_wrong_words(word_list: list):
     response_model=BloomFilterStatsResponse,
 )
 async def get_bloom_stats(
-    current_user: User = Depends(admin_auth_required),
+        current_user: User = Depends(admin_auth_required),
 ) -> BloomFilterStatsResponse:
     """
     Return Bloom filter statistics.
@@ -443,7 +425,7 @@ async def get_bloom_stats(
 
 @bloom_router.post("/reload/", response_model=BloomReloadResponse)
 async def reload_bloom_filter(
-    current_user: User = Depends(admin_auth_required),
+        current_user: User = Depends(admin_auth_required),
 ) -> BloomReloadResponse:
     """
     Rebuild the Bloom filter from the database.

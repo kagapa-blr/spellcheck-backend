@@ -1,32 +1,33 @@
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 
-from sqlalchemy import exists
+import unicodedata
+from sqlalchemy import exists, delete
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
 from app.config.logger_config import setup_logger
 from app.dbmodels.models import MainDictionary, UserAddedWord, User
-from app.utils.kannada_word_clean import clean_kannada_word
+from app.utils.kannada_word_clean import clean_kannada_word, is_single_kannada_akshara
 
 logger = setup_logger(__name__)
-
 
 # ======================================================
 # MAIN DICTIONARY SERVICE
 # ======================================================
+KANNADA_PATTERN = re.compile(r"^[\u0C80-\u0CFF]+$")
 
 
 class MainDictionaryService:
 
     @staticmethod
     def add_words(
-        db: Session,
-        words: list[dict[str, Any]],
-        added_by_username: Optional[str] = None,
+            db: Session,
+            words: list[dict[str, Any]],
+            added_by_username: Optional[str] = None,
     ) -> dict:
 
         added_words = []
@@ -226,10 +227,10 @@ class MainDictionaryService:
 
     @staticmethod
     def get_words(
-        db: Session,
-        limit: int = 50,
-        offset: int = 0,
-        search: Optional[str] = None,
+            db: Session,
+            limit: int = 50,
+            offset: int = 0,
+            search: Optional[str] = None,
     ) -> dict:
 
         query = db.query(MainDictionary)
@@ -290,9 +291,9 @@ class MainDictionaryService:
 
     @staticmethod
     def approve_user_words(
-        db: Session,
-        words: list[str],
-        approved_by_username: str,
+            db: Session,
+            words: list[str],
+            approved_by_username: str,
     ) -> dict:
         """
         Approve user-added words by moving them into the main dictionary.
@@ -404,6 +405,86 @@ class MainDictionaryService:
             db.rollback()
             logger.exception("Error approving user words into main dictionary")
             raise
+
+    @staticmethod
+    def is_valid_kannada_word(word: str) -> bool:
+        if not word:
+            return False
+        word = word.strip()
+        if not word:
+            return False
+        # Normalize Kannada unicode representation
+        word = unicodedata.normalize("NFC", word)
+        # Remove single Kannada akshara
+        if is_single_kannada_akshara(word):
+            return False
+        # Allow only Kannada Unicode characters
+        return bool(KANNADA_PATTERN.fullmatch(word))
+
+    @staticmethod
+    def clean_dictionary(
+            db: Session,
+            batch_size: int = 5000,
+    ):
+
+        deleted_count = 0
+        checked_count = 0
+        deleted_words = []
+
+        invalid_ids = []
+
+        query = (
+            db.query(MainDictionary)
+            .yield_per(batch_size)
+        )
+
+        for item in query:
+
+            checked_count += 1
+
+            if not MainDictionaryService.is_valid_kannada_word(
+                    item.word
+            ):
+
+                invalid_ids.append(item.id)
+
+                if len(deleted_words) < 100:
+                    deleted_words.append(item.word)
+
+            # delete every batch
+            if len(invalid_ids) >= batch_size:
+                db.execute(
+                    delete(MainDictionary)
+                    .where(
+                        MainDictionary.id.in_(invalid_ids)
+                    )
+                )
+
+                db.commit()
+
+                deleted_count += len(invalid_ids)
+
+                invalid_ids.clear()
+
+        # delete remaining
+        if invalid_ids:
+            db.execute(
+                delete(MainDictionary)
+                .where(
+                    MainDictionary.id.in_(invalid_ids)
+                )
+            )
+
+            db.commit()
+
+            deleted_count += len(invalid_ids)
+
+        return {
+            "total_checked": checked_count,
+            "deleted_count": deleted_count,
+            "sample_deleted_words": deleted_words,
+            "batch_size": batch_size,
+        }
 
 
 # ======================================================
@@ -557,10 +638,10 @@ class UserAddedWordService:
 
     @staticmethod
     def get_words(
-        db: Session,
-        limit: int = 50,
-        offset: int = 0,
-        search: Optional[str] = None,
+            db: Session,
+            limit: int = 50,
+            offset: int = 0,
+            search: Optional[str] = None,
     ) -> dict:
 
         query = db.query(UserAddedWord)

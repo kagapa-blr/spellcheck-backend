@@ -20,6 +20,7 @@ from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.responses import RedirectResponse
 
 from app.config.database import get_db, get_session
 from app.config.logger_config import setup_logger
@@ -66,9 +67,9 @@ def get_password_hash(password: str) -> str:
 # JWT Token Utilities
 # ----------------------------
 def create_access_token(
-    subject: str,
-    expires_delta: Optional[timedelta] = None,
-    extra_claims: Optional[dict[str, Any]] = None,
+        subject: str,
+        expires_delta: Optional[timedelta] = None,
+        extra_claims: Optional[dict[str, Any]] = None,
 ) -> str:
     """
     Create a secure JWT access token with standard claims.
@@ -114,7 +115,7 @@ def create_access_token(
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+        token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -148,18 +149,32 @@ def get_current_user(
     return user
 
 
-def admin_auth_required(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-) -> User:
+def admin_auth_required(token: str = Depends(oauth2_scheme),
+                        db: Session = Depends(get_db)) -> User:
     """
-    Returns the user if they are authenticated as admin.
+    Returns authenticated admin user.
     """
-    user = get_current_user(token, db)
-    if user.username != default_admin_username:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
+
+    return get_current_user(token, db)
+
+
+def login_required(
+        token: str = Depends(oauth2_scheme),
+        db: Session = Depends(get_db)
+):
+    """
+    Require authenticated user.
+    Redirects unauthenticated users to login page.
+    """
+
+    try:
+        return get_current_user(token, db)
+
+    except HTTPException:
+        return RedirectResponse(
+            url="/#/login",
+            status_code=status.HTTP_302_FOUND
         )
-    return user
 
 
 # ----------------------------

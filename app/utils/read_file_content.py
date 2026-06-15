@@ -117,25 +117,43 @@ class FileWordProcessor:
 
         cleaned_words: List[str] = []
         skipped_words = 0
+        skipped_long_words = 0
 
         for word in raw_words:
             cleaned_word = clean_kannada_word(word)
 
-            if cleaned_word:
-                cleaned_words.append(cleaned_word)
-            else:
+            # Skip invalid words
+            if not cleaned_word:
                 skipped_words += 1
+                continue
+
+            # Skip words longer than 30 characters
+            if len(cleaned_word) > 30:
+                skipped_long_words += 1
+
+                logger.warning(
+                    f"Skipping long word | "
+                    f"word={cleaned_word} | "
+                    f"length={len(cleaned_word)}"
+                )
+
+                continue
+
+            cleaned_words.append(cleaned_word)
 
         logger.info(
             f"Word cleaning completed | "
             f"valid_words={len(cleaned_words)} | "
-            f"skipped_words={skipped_words}"
+            f"skipped_invalid_words={skipped_words} | "
+            f"skipped_long_words={skipped_long_words}"
         )
 
+        # Frequency calculation
         frequency_counter = Counter(cleaned_words)
 
         logger.info(
-            f"Frequency analysis completed | " f"unique_words={len(frequency_counter)}"
+            f"Frequency analysis completed | "
+            f"unique_words={len(frequency_counter)}"
         )
 
         result = [
@@ -150,7 +168,8 @@ class FileWordProcessor:
             f"Text processing completed | "
             f"total_words={len(cleaned_words)} | "
             f"unique_words={len(result)} | "
-            f"skipped_words={skipped_words}"
+            f"skipped_invalid_words={skipped_words} | "
+            f"skipped_long_words={skipped_long_words}"
         )
 
         return result

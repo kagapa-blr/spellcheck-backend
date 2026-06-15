@@ -1,0 +1,1 @@
+import{o as e}from"./rolldown-runtime-CMxvf4Kt.js";import{s as t}from"./@emotion-DK_u0lgs.js";import{u as n}from"./react-router-D9qX_kF6.js";import{r}from"./index-DUrtrxEo.js";var i=e(t(),1),a=()=>{let{logout:e}=r(),t=n();return(0,i.useEffect)(()=>{e(),t(`/login`)},[e,t]),null};export{a as default};

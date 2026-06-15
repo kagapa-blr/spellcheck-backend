@@ -1,0 +1,1 @@
+import{t as e}from"./rolldown-runtime-CMxvf4Kt.js";import{Z as t}from"./@mui-tTv_4GdZ.js";var n=e((e=>{var n=t();e.createRoot=n.createRoot,e.hydrateRoot=n.hydrateRoot}));export{n as t};

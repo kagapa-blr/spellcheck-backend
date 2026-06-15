@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends
-from typing import Optional
 from fastapi import (
     File,
     HTTPException,
@@ -40,9 +40,9 @@ dictionary_router = APIRouter()
 
 @dictionary_router.delete("/main", response_model=APIResponse)
 def delete_main_words(
-    payload: WordListRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(admin_auth_required),
+        payload: WordListRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(admin_auth_required),
 ):
     logger.info(f"{payload.words} Attempted Delete by {current_user.username}")
     result = MainDictionaryService.delete_words(db=db, words=payload.words)
@@ -65,19 +65,18 @@ def check_main_word(word: str, db: Session = Depends(get_db)):
         return True
     result = MainDictionaryService.word_exists(db=db, word=word)
     return APIResponse(
-        message="checked in Main dictionary for existance",
+        message="checked in Main dictionary for existence",
         data=result,
     )
 
 
 @dictionary_router.get("/main", response_model=APIResponse)
 def list_main_words(
-    limit: int = 50,
-    offset: int = 0,
-    search: Optional[str] = None,
-    db: Session = Depends(get_db),
+        limit: int = 50,
+        offset: int = 0,
+        search: Optional[str] = None,
+        db: Session = Depends(get_db),
 ):
-
     result = MainDictionaryService.get_words(
         db=db,
         limit=limit,
@@ -96,9 +95,9 @@ SUPPORTED_EXTENSIONS = {".txt", ".docx"}
 
 @dictionary_router.post("/main/upload")
 async def upload_main_dictionary_file(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(admin_auth_required),
+        file: UploadFile = File(...),
+        db: Session = Depends(get_db),
+        current_user: User = Depends(admin_auth_required),
 ):
     temp_path = None
 
@@ -138,8 +137,8 @@ async def upload_main_dictionary_file(
             )
 
         with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=extension,
+                delete=False,
+                suffix=extension,
         ) as tmp:
             tmp.write(file_bytes)
             temp_path = tmp.name
@@ -221,9 +220,9 @@ def get_dictionary_counts(db: Session = Depends(get_db)):
     response_model=APIResponse,
 )
 def approve_user_words(
-    payload: ApproveUserWordsRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(admin_auth_required),
+        payload: ApproveUserWordsRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(admin_auth_required),
 ):
     result = MainDictionaryService.approve_user_words(
         db=db, words=payload.words, approved_by_username=current_user.username
@@ -235,6 +234,17 @@ def approve_user_words(
     )
 
 
+@dictionary_router.delete("/main/clean", response_model=APIResponse)
+def clean_main_dictionary(db: Session = Depends(get_db), current_user: User = Depends(admin_auth_required)):
+    logger.info(f"Main dictionary cleanup started by :{current_user.username}")
+    result = MainDictionaryService.clean_dictionary(db=db)
+    logger.info(f"Main dictionary cleanup completed. Deleted={result['deleted_count']}")
+    return APIResponse(
+        message="Main dictionary cleaned successfully",
+        data=result,
+    )
+
+
 # ======================================================
 # USER WORD ROUTES
 # ======================================================
@@ -242,10 +252,9 @@ def approve_user_words(
 
 @dictionary_router.post("/user/add", response_model=APIResponse)
 def add_user_words(
-    payload: AddUserWordsRequest,
-    db: Session = Depends(get_db),
+        payload: AddUserWordsRequest,
+        db: Session = Depends(get_db),
 ):
-
     result = UserAddedWordService.add_words(
         db=db,
         words=[w.model_dump() for w in payload.words],
@@ -259,9 +268,9 @@ def add_user_words(
 
 @dictionary_router.delete("/user", response_model=APIResponse)
 def delete_user_words(
-    payload: WordListRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(admin_auth_required),
+        payload: WordListRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(admin_auth_required),
 ):
     logger.info(f"Attempting to Delete {payload.words} by {current_user.username}")
     result = UserAddedWordService.delete_words(
@@ -280,12 +289,11 @@ def delete_user_words(
 
 @dictionary_router.get("/user", response_model=APIResponse)
 def list_user_words(
-    limit: int = 50,
-    offset: int = 0,
-    search: Optional[str] = None,
-    db: Session = Depends(get_db),
+        limit: int = 50,
+        offset: int = 0,
+        search: Optional[str] = None,
+        db: Session = Depends(get_db),
 ):
-
     result = UserAddedWordService.get_words(
         db=db,
         limit=limit,

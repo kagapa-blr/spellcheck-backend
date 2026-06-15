@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer
+from sqlalchemy import String, ForeignKey, DateTime
+from sqlalchemy.dialects.mysql import VARCHAR
 
 from app.config.database import Base
 
@@ -29,9 +31,10 @@ class MainDictionary(Base):
     __tablename__ = "main_dictionary"
 
     id = Column(Integer, primary_key=True, index=True)
-    word = Column(String(255), unique=True, nullable=False)
+    word = Column(VARCHAR(255, collation="utf8mb4_bin"), unique=True, nullable=False)
     added_by_username = Column(String(100), ForeignKey("users.username"), nullable=True)
     frequency = Column(Integer, default=1, nullable=False)
+
     def __repr__(self):
         return f"<MainDictionary(id={self.id}, word='{self.word}', frequency={self.frequency})>"
 
@@ -40,7 +43,8 @@ class UserAddedWord(Base):
     __tablename__ = "user_added_words"
 
     id = Column(Integer, primary_key=True, index=True)
-    word = Column(String(255), nullable=False)
+    # Use utf8mb4_bin collation to ensure exact byte comparison
+    word = Column(VARCHAR(255, collation="utf8mb4_bin"), nullable=False)
     frequency = Column(Integer, default=1, nullable=False)
 
     def __repr__(self):

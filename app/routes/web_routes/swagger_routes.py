@@ -1,32 +1,55 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, Depends
-from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html, get_redoc_html
+from fastapi import APIRouter, Request, Depends
+from fastapi.openapi.docs import (
+    get_swagger_ui_html,
+    get_swagger_ui_oauth2_redirect_html,
+    get_redoc_html,
+)
 
-from app.services.security_service.auth import admin_auth_required
+from app.config.logger_config import setup_logger
+from app.dbmodels.models import User
+from app.services.security_service.auth import login_required
+
+swagger_router = APIRouter()
+
+logger = setup_logger(module_name=__name__)
 
 
-def setup_swagger_routes(app: FastAPI):
-    """Setup custom Swagger and ReDoc routes for the FastAPI app."""
-    
-    @app.get("/swagger", include_in_schema=False)
-    async def custom_swagger_ui_html():
-        return get_swagger_ui_html(
-            openapi_url=str(app.openapi_url),
-            title=f"{app.title} - Swagger UI",
-            oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-            swagger_js_url="/static/js/swagger-ui-bundle.js",
-            swagger_css_url="/static/css/swagger-ui.css",
-        )
+@swagger_router.get("/swagger", include_in_schema=False)
+async def custom_swagger_ui_html(
+        request: Request,
+        current_user: User = Depends(login_required),
+):
+    app = request.app
 
-    @app.get(str(app.swagger_ui_oauth2_redirect_url), include_in_schema=False)
-    async def swagger_ui_redirect():
-        return get_swagger_ui_oauth2_redirect_html()
+    logger.info(
+        f"Swagger page accessed by {current_user.username}"
+    )
 
-    @app.get("/redoc", include_in_schema=False)
-    async def redoc_html():
-        return get_redoc_html(
-            openapi_url=str(app.openapi_url),
-            title=f"{app.title} - ReDoc",
-            redoc_js_url="/static/js/swagger-ui-bundle.js",
-        )
+    return get_swagger_ui_html(
+        openapi_url=str(app.openapi_url),
+        title=f"{app.title} - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="/static/js/swagger-ui-bundle.js",
+        swagger_css_url="/static/css/swagger-ui.css",
+    )
+
+
+@swagger_router.get(
+    "/docs/oauth2-redirect",
+    include_in_schema=False,
+)
+async def swagger_ui_redirect():
+    return get_swagger_ui_oauth2_redirect_html()
+
+
+@swagger_router.get("/redoc", include_in_schema=False)
+async def redoc_html(request: Request):
+    app = request.app
+
+    return get_redoc_html(
+        openapi_url=str(app.openapi_url),
+        title=f"{app.title} - ReDoc",
+        redoc_js_url="/static/js/redoc.standalone.js",
+    )

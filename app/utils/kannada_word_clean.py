@@ -38,4 +38,56 @@ def clean_kannada_word(word: str) -> str:
     # Keep only Kannada characters
     cleaned = "".join(KANNADA_PATTERN.findall(cleaned))
 
+    if is_single_kannada_akshara(cleaned):
+        return ""
+
     return cleaned
+
+
+def is_single_kannada_akshara(text: str) -> bool:
+    """
+    Returns True if text contains exactly one Kannada akshara.
+
+    Examples:
+        ಕ       -> True
+        ಕಾ      -> True
+        ಸ್ತ     -> True
+        ಕನ್ನಡ   -> False
+        ಮನೆ     -> False
+    """
+
+    if not text:
+        return False
+
+    text = unicodedata.normalize("NFC", text.strip())
+
+    # Check all chars are Kannada
+    if any(not ("\u0C80" <= ch <= "\u0CFF") for ch in text):
+        return False
+
+    akshara_count = 0
+    previous_was_virama = False
+
+    for ch in text:
+
+        category = unicodedata.category(ch)
+
+        # Kannada consonant/vowel letters
+        if category == "Lo":
+            if not previous_was_virama:
+                akshara_count += 1
+
+            previous_was_virama = False
+
+        # Halant (್) joins next consonant
+        elif ch == "\u0CCD":
+            previous_was_virama = True
+
+        # Vowel signs, anusvara, visarga, etc. are part of same akshara
+        elif category in ("Mc", "Mn"):
+            continue
+
+        else:
+            return False
+
+    return akshara_count == 1
