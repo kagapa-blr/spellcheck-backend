@@ -14,9 +14,10 @@ def clean_kannada_word(word: str) -> str:
     Clean a Kannada word by:
     - Unicode normalization (NFC)
     - Removing whitespace
-    - Rejecting entire word if it contains any digit
-      (English 0-9 or Kannada ೦-೯)
-    - Keeping only Kannada Unicode characters
+    - Rejecting digits
+    - Keeping only Kannada characters
+    - Rejecting invalid starting dependent signs
+    - Rejecting single akshara words
 
     Returns:
         Cleaned Kannada word, or "" if invalid.
@@ -25,35 +26,70 @@ def clean_kannada_word(word: str) -> str:
     if not word:
         return ""
 
-    # Normalize Unicode
     cleaned = unicodedata.normalize("NFC", str(word))
 
     # Remove whitespace
     cleaned = re.sub(r"\s+", "", cleaned)
 
-    # Reject entire word if any digit exists
+    # Reject digits
     if DIGIT_PATTERN.search(cleaned):
         return ""
 
     # Keep only Kannada characters
     cleaned = "".join(KANNADA_PATTERN.findall(cleaned))
 
+    if not cleaned:
+        return ""
+
+    # Reject invalid starting characters
+    if starts_with_invalid_kannada_sign(cleaned):
+        return ""
+
+    # Reject single akshara
     if is_single_kannada_akshara(cleaned):
         return ""
 
     return cleaned
 
 
+def starts_with_invalid_kannada_sign(text: str) -> bool:
+    """
+    Reject words starting with:
+    - Anusvara (ಂ)
+    - Visarga (ಃ)
+    - Vowel signs (ಾಿೀುೂೃೆೇೈೊೋೌ)
+    - Virama (್)
+
+    Examples:
+        ಂಬದೇ -> True
+        ್ಕ -> True
+        ಕನ್ನಡ -> False
+    """
+
+    if not text:
+        return True
+
+    first = text[0]
+
+    invalid_start_chars = {
+        "\u0C82",  # ಂ anusvara
+        "\u0C83",  # ಃ visarga
+        "\u0CCD",  # ್ virama
+    }
+
+    # Kannada vowel signs range
+    if first in invalid_start_chars:
+        return True
+
+    if "\u0CBE" <= first <= "\u0CCC":
+        return True
+
+    return False
+
+
 def is_single_kannada_akshara(text: str) -> bool:
     """
     Returns True if text contains exactly one Kannada akshara.
-
-    Examples:
-        ಕ       -> True
-        ಕಾ      -> True
-        ಸ್ತ     -> True
-        ಕನ್ನಡ   -> False
-        ಮನೆ     -> False
     """
 
     if not text:
@@ -61,7 +97,6 @@ def is_single_kannada_akshara(text: str) -> bool:
 
     text = unicodedata.normalize("NFC", text.strip())
 
-    # Check all chars are Kannada
     if any(not ("\u0C80" <= ch <= "\u0CFF") for ch in text):
         return False
 
@@ -72,18 +107,16 @@ def is_single_kannada_akshara(text: str) -> bool:
 
         category = unicodedata.category(ch)
 
-        # Kannada consonant/vowel letters
         if category == "Lo":
+
             if not previous_was_virama:
                 akshara_count += 1
 
             previous_was_virama = False
 
-        # Halant (್) joins next consonant
         elif ch == "\u0CCD":
             previous_was_virama = True
 
-        # Vowel signs, anusvara, visarga, etc. are part of same akshara
         elif category in ("Mc", "Mn"):
             continue
 

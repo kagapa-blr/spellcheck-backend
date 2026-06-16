@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from typing import Any, Optional
 
-import unicodedata
 from sqlalchemy import exists, delete
 from sqlalchemy import func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
@@ -11,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.config.logger_config import setup_logger
 from app.dbmodels.models import MainDictionary, UserAddedWord, User
-from app.utils.kannada_word_clean import clean_kannada_word, is_single_kannada_akshara
+from app.utils.kannada_word_clean import clean_kannada_word
 
 logger = setup_logger(__name__)
 
@@ -410,16 +409,13 @@ class MainDictionaryService:
     def is_valid_kannada_word(word: str) -> bool:
         if not word:
             return False
-        word = word.strip()
-        if not word:
+
+        cleaned = clean_kannada_word(word)
+
+        if not cleaned:
             return False
-        # Normalize Kannada unicode representation
-        word = unicodedata.normalize("NFC", word)
-        # Remove single Kannada akshara
-        if is_single_kannada_akshara(word):
-            return False
-        # Allow only Kannada Unicode characters
-        return bool(KANNADA_PATTERN.fullmatch(word))
+
+        return True
 
     @staticmethod
     def clean_dictionary(
@@ -428,31 +424,57 @@ class MainDictionaryService:
     ):
 
         deleted_count = 0
+        updated_count = 0
         checked_count = 0
+
         deleted_words = []
 
-        invalid_ids = []
+        last_id = 0
 
-        query = (
-            db.query(MainDictionary)
-            .yield_per(batch_size)
-        )
+        while True:
 
-        for item in query:
+            items = (
+                db.query(MainDictionary)
+                .filter(MainDictionary.id > last_id)
+                .order_by(MainDictionary.id)
+                .limit(batch_size)
+                .all()
+            )
 
-            checked_count += 1
+            if not items:
+                break
 
-            if not MainDictionaryService.is_valid_kannada_word(
-                    item.word
-            ):
+            invalid_ids = []
 
-                invalid_ids.append(item.id)
+            for item in items:
 
-                if len(deleted_words) < 100:
-                    deleted_words.append(item.word)
+                checked_count += 1
 
-            # delete every batch
-            if len(invalid_ids) >= batch_size:
+                last_id = item.id
+
+                original_word = item.word
+
+                cleaned_word = clean_kannada_word(
+                    original_word
+                )
+
+                # Invalid word -> delete
+                if not cleaned_word:
+
+                    invalid_ids.append(item.id)
+
+                    if len(deleted_words) < 100:
+                        deleted_words.append(original_word)
+
+
+                # Normalized / cleaned word changed
+                elif cleaned_word != original_word:
+
+                    item.word = cleaned_word
+                    updated_count += 1
+
+            # Delete current batch invalid words
+            if invalid_ids:
                 db.execute(
                     delete(MainDictionary)
                     .where(
@@ -460,28 +482,15 @@ class MainDictionaryService:
                     )
                 )
 
-                db.commit()
-
                 deleted_count += len(invalid_ids)
 
-                invalid_ids.clear()
-
-        # delete remaining
-        if invalid_ids:
-            db.execute(
-                delete(MainDictionary)
-                .where(
-                    MainDictionary.id.in_(invalid_ids)
-                )
-            )
-
+            # Commit every batch
             db.commit()
-
-            deleted_count += len(invalid_ids)
 
         return {
             "total_checked": checked_count,
             "deleted_count": deleted_count,
+            "updated_count": updated_count,
             "sample_deleted_words": deleted_words,
             "batch_size": batch_size,
         }
