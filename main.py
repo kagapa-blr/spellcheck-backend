@@ -181,7 +181,6 @@ add_security_middleware(app)
 
 setup_error_handlers(app)
 
-
 # --------------------------------------------------
 # Routers
 # --------------------------------------------------
@@ -193,7 +192,7 @@ app.include_router(symspell_router, prefix="/symspell/api/v1", tags=["SymSpell A
 app.include_router(
     admin_activities_router, prefix="/admin/api/v1/activity", tags=["Admin Activities"]
 )
-app.include_router(swagger_router,prefix="/documentation",tags=["Swagger"])
+app.include_router(swagger_router, prefix="/documentation", tags=["Swagger"])
 
 
 # --------------------------------------------------
