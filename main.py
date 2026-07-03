@@ -17,7 +17,7 @@ from app.routes.api_routes.admin_activities import admin_activities_router
 from app.routes.api_routes.bloom_filter_routes import (
     bloom_initialization,
     bloom_router,
-)
+    )
 from app.routes.api_routes.dictionary_routes import dictionary_router
 from app.routes.api_routes.manage_admins import manage_admin_router
 from app.routes.api_routes.symspell_routes import symspell_router
@@ -26,7 +26,6 @@ from app.routes.web_routes.swagger_routes import swagger_router
 from app.services.security_service.app_security import add_security_middleware
 from app.services.security_service.auth import create_default_admin
 from app.services.symspell_service.symspell_service import symspell_initialization
-
 # --------------------------------------------------
 # Paths
 # --------------------------------------------------
@@ -45,8 +44,6 @@ TEMPLATES_DIR = os.path.join(APP_DIR, "templates")
 # --------------------------------------------------
 
 logger = setup_logger(__name__)
-
-
 # --------------------------------------------------
 # Lifespan
 # --------------------------------------------------
@@ -65,7 +62,6 @@ async def lifespan(app: FastAPI):
         # Database engine/session initialized. Schedule heavy background
         # initializations (BLOOM, SymSpell) to run asynchronously so startup
         # is not blocked. These will run after DB is ready.
-
         loop = asyncio.get_event_loop()
 
         # Run initializations sequentially in a background task so startup isn't blocked.
@@ -83,30 +79,24 @@ async def lifespan(app: FastAPI):
 
     finally:
         logger.info("Application shutdown complete")
-
-
 async def _safe_run_async(name: str, coro_func):
     try:
         await coro_func()
         logger.info(f"Background init '{name}' completed successfully")
     except Exception as e:
         logger.error(f"Background init '{name}' failed: {e}", exc_info=True)
-
-
 async def _safe_run_thread(name: str, func):
     try:
         await asyncio.to_thread(func)
         logger.info(f"Background init '{name}' completed successfully")
     except Exception as e:
         logger.error(f"Background init '{name}' failed: {e}", exc_info=True)
-
-
 async def _run_init_sequence(delay_seconds: int = 2):
     """Run Bloom initialization, wait `delay_seconds`, then run SymSpell init."""
     try:
         logger.info(
-            "Starting sequential background initialization: Bloom -> sleep -> SymSpell"
-        )
+                "Starting sequential background initialization: Bloom -> sleep -> SymSpell"
+                )
 
         # Ensure default admin exists before other inits
         try:
@@ -125,8 +115,8 @@ async def _run_init_sequence(delay_seconds: int = 2):
         # Wait a bit to let resources stabilize
         if delay_seconds > 0:
             logger.info(
-                f"Waiting {delay_seconds}s before starting SymSpell initialization"
-            )
+                    f"Waiting {delay_seconds}s before starting SymSpell initialization"
+                    )
             await asyncio.sleep(delay_seconds)
 
         # SymSpell (run in thread to avoid blocking)
@@ -135,25 +125,23 @@ async def _run_init_sequence(delay_seconds: int = 2):
             logger.info("SymSpell initialization completed in sequence")
         except Exception as e:
             logger.error(
-                f"SymSpell initialization failed in sequence: {e}", exc_info=True
-            )
+                    f"SymSpell initialization failed in sequence: {e}", exc_info=True
+                    )
 
         logger.info("Sequential background initialization finished")
     except Exception as e:
         logger.error(f"Error in initialization sequence: {e}", exc_info=True)
-
-
 # --------------------------------------------------
 # FastAPI App
 # --------------------------------------------------
 
 app = FastAPI(
-    lifespan=lifespan,
-    docs_url=None,
-    redoc_url=None,
-    title="Spellcheck",
-    description="Spellcheck application for Kannada language",
-)
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        title="Spellcheck",
+        description="Spellcheck application for Kannada language",
+        )
 
 # --------------------------------------------------
 # Static Files
@@ -190,11 +178,9 @@ app.include_router(dictionary_router, prefix="/dictionary/api/v1", tags=["Dictio
 app.include_router(bloom_router, prefix="/bloom/api/v1", tags=["BLOOM API"])
 app.include_router(symspell_router, prefix="/symspell/api/v1", tags=["SymSpell API"])
 app.include_router(
-    admin_activities_router, prefix="/admin/api/v1/activity", tags=["Admin Activities"]
-)
+        admin_activities_router, prefix="/admin/api/v1/activity", tags=["Admin Activities"]
+        )
 app.include_router(swagger_router, prefix="/documentation", tags=["Swagger"])
-
-
 # --------------------------------------------------
 # Home Page
 # --------------------------------------------------
@@ -203,19 +189,17 @@ app.include_router(swagger_router, prefix="/documentation", tags=["Swagger"])
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-    )
-
-
+            request=request,
+            name="index.html",
+            )
 # --------------------------------------------------
 # Startup
 # --------------------------------------------------
 
 if __name__ == "__main__":
     uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8080,
-        reload=False,
-    )
+            app,
+            host="0.0.0.0",
+            port=8080,
+            reload=False,
+            )
