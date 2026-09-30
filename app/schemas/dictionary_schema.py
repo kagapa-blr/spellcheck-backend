@@ -21,6 +21,11 @@ class WordListRequest(BaseModel):
     words: list[str]
 
 
+class UpdateMainDictionaryWordRequest(BaseModel):
+    word: str = Field(min_length=1, max_length=255)
+    frequency: int = Field(ge=1)
+
+
 class WordResponse(BaseModel):
     word: str
     frequency: int

@@ -21,8 +21,10 @@ from app.schemas.dictionary_schema import (
     AddUserWordsRequest,
     WordListRequest,
     ApproveUserWordsRequest,
+    UpdateMainDictionaryWordRequest,
 )
 from app.services.dictionary_service.dictionary_service import (
+    DuplicateMainDictionaryWordError,
     MainDictionaryService,
     UserAddedWordService,
 )
@@ -54,6 +56,32 @@ def delete_main_words(
         message="Words deleted",
         data=result,
     )
+
+
+@dictionary_router.put("/main/{word_id}", response_model=APIResponse)
+def update_main_word(
+        word_id: int,
+        payload: UpdateMainDictionaryWordRequest,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(admin_auth_required),
+):
+    try:
+        result = MainDictionaryService.update_word(
+                db=db,
+                word_id=word_id,
+                word=payload.word,
+                frequency=payload.frequency,
+                )
+    except DuplicateMainDictionaryWordError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if result is None:
+        raise HTTPException(status_code=404, detail="Dictionary word not found")
+
+    logger.info("Main dictionary word %s updated by %s", word_id, current_user.username)
+    return APIResponse(message="Dictionary word updated", data=result)
 
 
 @dictionary_router.get("/main/check", response_model=APIResponse)

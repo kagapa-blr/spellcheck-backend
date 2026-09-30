@@ -5,6 +5,7 @@ from typing import Any, Optional
 
 from sqlalchemy import exists, delete, func, select
 from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config.logger_config import setup_logger
@@ -16,6 +17,12 @@ logger = setup_logger(__name__)
 # MAIN DICTIONARY SERVICE
 # ======================================================
 KANNADA_PATTERN = re.compile(r"^[\u0C80-\u0CFF]+$")
+
+
+class DuplicateMainDictionaryWordError(ValueError):
+    pass
+
+
 class MainDictionaryService:
     @staticmethod
     def add_words(
@@ -190,6 +197,58 @@ class MainDictionaryService:
             db.rollback()
             logger.exception("Error deleting words from main dictionary")
             raise
+
+    @staticmethod
+    def update_word(
+            db: Session,
+            word_id: int,
+            word: str,
+            frequency: int,
+            ) -> Optional[dict]:
+        try:
+            entry = db.query(MainDictionary).filter(MainDictionary.id == word_id).first()
+            if not entry:
+                return None
+
+            cleaned_word = clean_kannada_word(word.strip())
+            if not cleaned_word:
+                raise ValueError("A valid Kannada word is required")
+
+            duplicate = (
+                    db.query(MainDictionary.id)
+                    .filter(
+                            func.lower(MainDictionary.word) == cleaned_word.lower(),
+                            MainDictionary.id != word_id,
+                            )
+                    .first()
+            )
+            if duplicate:
+                raise DuplicateMainDictionaryWordError(
+                        "Another dictionary entry already uses this word"
+                        )
+
+            entry.word = cleaned_word
+            entry.frequency = frequency
+            db.commit()
+            db.refresh(entry)
+            return {
+                    "id": entry.id,
+                    "word": entry.word,
+                    "frequency": entry.frequency,
+                    "added_by_username": entry.added_by_username,
+                    }
+        except (ValueError, DuplicateMainDictionaryWordError):
+            db.rollback()
+            raise
+        except IntegrityError as exc:
+            db.rollback()
+            raise DuplicateMainDictionaryWordError(
+                    "Another dictionary entry already uses this word"
+                    ) from exc
+        except Exception:
+            db.rollback()
+            logger.exception("Error updating main dictionary word")
+            raise
     @staticmethod
     def check_word(db: Session, word: str) -> Optional[dict]:
         entry = (
@@ -238,6 +297,7 @@ class MainDictionaryService:
                 "offset": offset,
                 "words": [
                         {
+                            "id": e.id,
                                 "word": e.word,
                                 "frequency": e.frequency,
                                 "added_by_username": e.added_by_username,
