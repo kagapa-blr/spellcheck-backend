@@ -19,6 +19,7 @@ from app.dbmodels.models import User
 from app.schemas.common_response import APIResponse
 from app.schemas.dictionary_schema import (
     AddUserWordsRequest,
+    MainDictionaryListResponse,
     WordListRequest,
     ApproveUserWordsRequest,
     UpdateMainDictionaryWordRequest,
@@ -98,7 +99,10 @@ def check_main_word(word: str, db: Session = Depends(get_db)):
     )
 
 
-@dictionary_router.get("/main", response_model=APIResponse)
+@dictionary_router.get(
+    "/main",
+    response_model=APIResponse[MainDictionaryListResponse],
+)
 def list_main_words(
         limit: int = 50,
         offset: int = 0,

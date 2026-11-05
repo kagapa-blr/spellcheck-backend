@@ -26,6 +26,20 @@ class UpdateMainDictionaryWordRequest(BaseModel):
     frequency: int = Field(ge=1)
 
 
+class MainDictionaryWordResponse(BaseModel):
+    id: int
+    word: str
+    frequency: int
+    added_by_username: Optional[str] = None
+
+
+class MainDictionaryListResponse(BaseModel):
+    total_count: int
+    limit: int
+    offset: int
+    words: list[MainDictionaryWordResponse]
+
+
 class WordResponse(BaseModel):
     word: str
     frequency: int

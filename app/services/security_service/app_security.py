@@ -70,13 +70,17 @@ def add_security_middleware(app):
 
             # Build frame-ancestors directive from env or defaults.
             # Provide tokens separated by spaces; environment variable may be e.g.
-            # FRAME_ANCESTORS="self https://karnataka.gov.in *.karnataka.gov.in"
+            # FRAME_ANCESTORS="self https://karnataka.gov.in https://*.karnataka.gov.in"
             raw_frame_ancestors = os.getenv(
-                "FRAME_ANCESTORS", "self https://karnataka.gov.in *.karnataka.gov.in"
+                "FRAME_ANCESTORS",
+                "self https://karnataka.gov.in https://*.karnataka.gov.in",
             )
 
             parts = []
             for token in raw_frame_ancestors.split():
+                if token.startswith("[") and "](" in token and token.endswith(")"):
+                    token = token[1 : token.index("](")]
+
                 if token == "self":
                     parts.append("'self'")
                 else:
