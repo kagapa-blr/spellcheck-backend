@@ -199,6 +199,29 @@ class MainDictionaryService:
             raise
 
     @staticmethod
+    def delete_words_by_ids(db: Session, ids: list[int]) -> dict:
+        try:
+            entries = db.query(MainDictionary).filter(MainDictionary.id.in_(ids)).all()
+            if not entries:
+                return {"deleted_count": 0, "deleted_ids": [], "deleted_words": []}
+
+            deleted_ids = [entry.id for entry in entries]
+            deleted_words = [entry.word for entry in entries]
+            for entry in entries:
+                db.delete(entry)
+            db.commit()
+
+            return {
+                "deleted_count": len(deleted_ids),
+                "deleted_ids": deleted_ids,
+                "deleted_words": deleted_words,
+            }
+        except Exception:
+            db.rollback()
+            logger.exception("Error deleting words from main dictionary by ID")
+            raise
+
+    @staticmethod
     def update_word(
             db: Session,
             word_id: int,

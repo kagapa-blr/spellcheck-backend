@@ -21,6 +21,11 @@ class WordListRequest(BaseModel):
     words: list[str]
 
 
+class DeleteMainDictionaryWordsRequest(BaseModel):
+    ids: Optional[list[int]] = None
+    words: Optional[list[str]] = None
+
+
 class UpdateMainDictionaryWordRequest(BaseModel):
     word: str = Field(min_length=1, max_length=255)
     frequency: int = Field(ge=1)

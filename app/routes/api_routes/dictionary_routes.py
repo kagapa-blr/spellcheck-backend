@@ -19,6 +19,7 @@ from app.dbmodels.models import User
 from app.schemas.common_response import APIResponse
 from app.schemas.dictionary_schema import (
     AddUserWordsRequest,
+    DeleteMainDictionaryWordsRequest,
     MainDictionaryListResponse,
     WordListRequest,
     ApproveUserWordsRequest,
@@ -43,12 +44,31 @@ dictionary_router = APIRouter()
 
 @dictionary_router.delete("/main", response_model=APIResponse)
 def delete_main_words(
-        payload: WordListRequest,
+        payload: DeleteMainDictionaryWordsRequest,
         db: Session = Depends(get_db),
         current_user: User = Depends(admin_auth_required),
 ):
-    logger.info(f"{payload.words} Attempted Delete by {current_user.username}")
-    result = MainDictionaryService.delete_words(db=db, words=payload.words)
+    if (payload.ids is None) == (payload.words is None):
+        raise HTTPException(
+            status_code=422,
+            detail="Provide either dictionary word IDs or words to delete",
+        )
+    if payload.ids is not None:
+        if not payload.ids:
+            raise HTTPException(status_code=422, detail="At least one word ID is required")
+        result = MainDictionaryService.delete_words_by_ids(db=db, ids=payload.ids)
+        requested_count = len(payload.ids)
+    else:
+        if not payload.words:
+            raise HTTPException(status_code=422, detail="At least one word is required")
+        result = MainDictionaryService.delete_words(db=db, words=payload.words)
+        requested_count = len(payload.words)
+
+    logger.info(
+        "Main dictionary delete requested by %s for %s entries",
+        current_user.username,
+        requested_count,
+    )
 
     if result["deleted_count"] == 0:
         raise HTTPException(status_code=404, detail="No words found")
@@ -269,7 +289,18 @@ def approve_user_words(
 @dictionary_router.delete("/main/clean", response_model=APIResponse)
 def clean_main_dictionary(db: Session = Depends(get_db), current_user: User = Depends(admin_auth_required)):
     logger.info(f"Main dictionary cleanup started by :{current_user.username}")
-    result = MainDictionaryService.clean_dictionary(db=db)
+    try:
+        result = MainDictionaryService.clean_dictionary(db=db)
+    except Exception as exc:
+        logger.exception(
+            "Main dictionary cleanup failed for admin %s",
+            current_user.username,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=f"{type(exc).__name__}: {exc}",
+        ) from exc
+
     logger.info(f"Main dictionary cleanup completed. Deleted={result['deleted_count']}")
     return APIResponse(
         message="Main dictionary cleaned successfully",
